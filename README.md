@@ -1,6 +1,6 @@
 # AutoClicker Java
 
-Autoclicker de escritorio hecho en Java puro (Swing + `java.awt.Robot`), sin librerías externas.
+Autoclicker de escritorio hecho en Java puro (Swing + `java.awt.Robot`), sin librerías externas, con una interfaz moderna de componentes propios.
 
 ## Funciones
 
@@ -22,9 +22,17 @@ src/autoclicker/
 │   ├── ClickerListener.java       Notificaciones de progreso
 │   └── ClickerService.java        Lógica de clics (Robot + hilo)
 └── ui/
-    └── VentanaAutoClicker.java    Interfaz gráfica Swing
+    ├── VentanaAutoClicker.java    Ventana principal
+    ├── tema/
+    │   └── Tema.java              Colores, tipografía y medidas
+    └── componentes/
+        ├── BotonModerno.java      Botón redondeado con estados
+        ├── CampoNumerico.java     Campo numérico con botones − y +
+        ├── ControlSegmentado.java Selector de opciones en segmentos
+        ├── IndicadorEstado.java   Barra de estado animada
+        ├── Logo.java              Logo e icono de la ventana
+        └── PanelTarjeta.java      Tarjeta con título
 ```
-
 ## Requisitos
 
 JDK 21 o superior con `javac`, `jar` y `jpackage` en el PATH.
