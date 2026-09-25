@@ -15,6 +15,7 @@ public class BotonModerno extends JButton {
     public enum Variante { PRIMARIO, PELIGRO }
 
     private final Variante variante;
+    private String textoCorto;
 
     public BotonModerno(String texto, Variante variante) {
         super(texto);
@@ -27,6 +28,30 @@ public class BotonModerno extends JButton {
         setOpaque(false);
         setRolloverEnabled(true);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    /** Texto completo y una versión corta que se usa si el completo no cabe. */
+    public void setTextos(String completo, String corto) {
+        this.textoCorto = corto;
+        setText(completo);
+        repaint();
+    }
+
+    private String textoVisible(FontMetrics fm) {
+        String texto = getText();
+        if (textoCorto != null && fm.stringWidth(texto) > getWidth() - 24) return textoCorto;
+        return texto;
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension d = super.getPreferredSize();
+        if (textoCorto != null) {
+            FontMetrics fm = getFontMetrics(getFont());
+            Insets in = getInsets();
+            d.width = fm.stringWidth(textoCorto) + in.left + in.right;
+        }
+        return d;
     }
 
     @Override
@@ -74,9 +99,10 @@ public class BotonModerno extends JButton {
         g2.setFont(getFont());
         g2.setColor(texto);
         FontMetrics fm = g2.getFontMetrics();
-        int x = (getWidth() - fm.stringWidth(getText())) / 2;
+        String visible = textoVisible(fm);
+        int x = (getWidth() - fm.stringWidth(visible)) / 2;
         int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-        g2.drawString(getText(), x, y);
+        g2.drawString(visible, x, y);
         g2.dispose();
     }
 }
