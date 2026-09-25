@@ -1,0 +1,12 @@
+# Finales de línea correctos para cada script, sin importar desde qué sistema se haga el commit
+*.sh   text eol=lf
+*.bat  text eol=crlf
+*.java text eol=lf
+*.yml  text eol=lf
+*.md   text eol=lf
+
+# Archivos binarios
+*.jar  binary
+*.png  binary
+*.ico  binary
+*.icns binary

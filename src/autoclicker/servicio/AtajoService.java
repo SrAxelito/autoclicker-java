@@ -12,6 +12,10 @@ import com.github.kwhat.jnativehook.mouse.NativeMouseListener;
 import com.github.kwhat.jnativehook.mouse.NativeMouseWheelEvent;
 import com.github.kwhat.jnativehook.mouse.NativeMouseWheelListener;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -56,6 +60,7 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
      * @return false si el sistema no lo permite (el resto de la app sigue funcionando)
      */
     public boolean iniciar() {
+        prepararCarpetaNativa();
         Logger registro = Logger.getLogger(GlobalScreen.class.getPackage().getName());
         registro.setLevel(Level.WARNING);
         registro.setUseParentHandlers(false);
@@ -247,6 +252,38 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
     }
 
     // ---- Utilidades ----
+
+    /**
+     * JNativeHook extrae su librería nativa (.dll, .dylib o .so) junto al .jar.
+     * Si el programa está instalado en una carpeta protegida (por ejemplo,
+     * Archivos de programa) eso falla, así que se usa una carpeta del usuario.
+     */
+    private static void prepararCarpetaNativa() {
+        if (System.getProperty("jnativehook.lib.path") != null) return;
+        try {
+            Path carpeta = carpetaDatosUsuario().resolve("nativo");
+            Files.createDirectories(carpeta);
+            System.setProperty("jnativehook.lib.path", carpeta.toString());
+        } catch (IOException | SecurityException | InvalidPathException ignorada) {
+            // Se deja el comportamiento por defecto de JNativeHook
+        }
+    }
+
+    /** Carpeta de datos de la aplicación según el sistema operativo. */
+    static Path carpetaDatosUsuario() {
+        String sistema = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        String inicio = System.getProperty("user.home");
+        if (sistema.contains("win")) {
+            String local = System.getenv("LOCALAPPDATA");
+            return Path.of(local != null && !local.isBlank() ? local : inicio, "AutoClicker");
+        }
+        if (sistema.contains("mac")) {
+            return Path.of(inicio, "Library", "Application Support", "AutoClicker");
+        }
+        String xdg = System.getenv("XDG_DATA_HOME");
+        Path datos = (xdg != null && !xdg.isBlank()) ? Path.of(xdg) : Path.of(inicio, ".local", "share");
+        return datos.resolve("autoclicker");
+    }
 
     private static Atajo tecla(int codigo) {
         return new Atajo(Atajo.Tipo.TECLA, codigo, 0, NativeKeyEvent.getKeyText(codigo));

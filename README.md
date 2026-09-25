@@ -74,15 +74,70 @@ src/autoclicker/
         └── SelectorAtajo.java        Captura y muestra un atajo
 lib/
 └── jnativehook-2.2.2.jar             Librería para la escucha global
+recursos/
+├── icono.ico / icono.icns / icono.png   Iconos de la app para cada sistema
+construir.bat / construir.sh          Scripts de compilación
+.github/workflows/compilar.yml        Compilación y publicación automática
 ```
-## Requisitos
+## Descargar y usar
 
-JDK 21 o superior con `javac`, `jar` y `jpackage` en el PATH.
+Descarga la última versión desde la sección **Releases** del repositorio. Hay una opción para cada sistema:
 
-## Generar el ejecutable (Windows)
+| Sistema | Archivo | Necesita Java |
+|---|---|---|
+| Windows | `AutoClicker-X.Y.Z-windows-x64.zip` | No |
+| macOS (Apple Silicon) | `AutoClicker-X.Y.Z-macos-arm64.zip` | No |
+| Linux | `AutoClicker-X.Y.Z-linux-x64.tar.gz` | No |
+| Cualquiera (incluye Mac Intel) | `AutoClicker-X.Y.Z-portable.jar` | Sí, Java 21 o superior |
 
-Doble clic en `construir.bat`. El programa queda en `salida\AutoClicker\AutoClicker.exe`.
-Para compartirlo, comprime la carpeta `salida\AutoClicker` completa.
+### Windows
+
+1. Descomprime el `.zip` en cualquier carpeta (Escritorio, Documentos, una memoria USB…).
+2. Abre `AutoClicker.exe`.
+3. La primera vez, Windows puede mostrar "Windows protegió su PC" porque la aplicación no está firmada. Haz clic en **Más información → Ejecutar de todas formas**.
+
+### macOS
+
+1. Descomprime el `.zip` y mueve `AutoClicker.app` a Aplicaciones.
+2. La primera vez, haz clic derecho sobre la app → **Abrir** (la app no está firmada por Apple).
+3. Ve a **Configuración del Sistema → Privacidad y seguridad** y activa AutoClicker en **Accesibilidad** y en **Monitoreo de entrada**. Sin esos permisos no puede mover el mouse ni escuchar los atajos.
+
+### Linux
+
+1. Descomprime con `tar -xzf AutoClicker-X.Y.Z-linux-x64.tar.gz`.
+2. Ejecuta `AutoClicker/bin/AutoClicker`.
+3. Funciona en sesiones **X11**. En Wayland, el sistema bloquea que las aplicaciones controlen el mouse y lean el teclado de forma global; en ese caso elige "Ubuntu en Xorg" (o equivalente) en la pantalla de inicio de sesión.
+
+### Versión portable (.jar)
+
+Con Java 21 o superior instalado, se abre con doble clic o con `java -jar AutoClicker-X.Y.Z-portable.jar`. Es la opción para sistemas sin paquete propio, como los Mac con procesador Intel.
+
+## Datos que guarda
+
+- **Preferencias** (atajos y tema): con `java.util.prefs`, en el registro del usuario en Windows y en la carpeta de preferencias del usuario en macOS y Linux.
+- **Librería nativa de JNativeHook**: se extrae en `%LOCALAPPDATA%\AutoClicker` (Windows), `~/Library/Application Support/AutoClicker` (macOS) o `~/.local/share/autoclicker` (Linux), para que funcione aunque el programa esté en una carpeta sin permisos de escritura.
+
+## Compilar
+
+Requisitos: JDK 21 o superior con `javac`, `jar` y `jpackage` en el PATH.
+
+| Sistema | Comando |
+|---|---|
+| Windows | `construir.bat` (o doble clic) |
+| macOS / Linux | `./construir.sh` |
+
+Se puede indicar la versión: `construir.bat 1.5.0` o `./construir.sh 1.5.0`. El resultado queda en `dist/`, y la aplicación sin comprimir en `build/salida/` para probarla. `jpackage` solo genera la aplicación del sistema en el que se ejecuta.
+
+## Publicar una versión
+
+El workflow `.github/workflows/compilar.yml` compila en Windows, macOS y Linux en cada push a `main` o `develop` y en cada Pull Request. Al subir una etiqueta, además crea el Release con los archivos de los tres sistemas:
+
+```
+git checkout main
+git pull
+git tag -a v1.5.0 -m "Versión 1.5.0"
+git push origin v1.5.0
+```
 
 ## Créditos
 
