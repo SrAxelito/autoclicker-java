@@ -14,11 +14,7 @@ public class PreferenciasRepository {
 
     private static final String NODO = "autoclicker-java";
 
-    private static final String ATAJO_TIPO   = "atajo.tipo";
-    private static final String ATAJO_CODIGO = "atajo.codigo";
-    private static final String ATAJO_MODS   = "atajo.modificadores";
-    private static final String ATAJO_NOMBRE = "atajo.nombre";
-    private static final String TEMA         = "tema";
+    private static final String TEMA = "tema";
 
     private final Preferences prefs;
 
@@ -31,26 +27,30 @@ public class PreferenciasRepository {
         this.prefs = prefs;
     }
 
-    public Optional<Atajo> cargarAtajo() {
-        String tipo = prefs.get(ATAJO_TIPO, null);
-        String nombre = prefs.get(ATAJO_NOMBRE, null);
+    /**
+     * Carga un atajo guardado.
+     * @param clave prefijo con el que se guardó, por ejemplo "atajo.mouse.grabar"
+     */
+    public Optional<Atajo> cargarAtajo(String clave) {
+        String tipo = prefs.get(clave + ".tipo", null);
+        String nombre = prefs.get(clave + ".nombre", null);
         if (tipo == null || nombre == null) return Optional.empty();
         try {
             return Optional.of(new Atajo(
                     Atajo.Tipo.valueOf(tipo),
-                    prefs.getInt(ATAJO_CODIGO, -1),
-                    prefs.getInt(ATAJO_MODS, 0),
+                    prefs.getInt(clave + ".codigo", -1),
+                    prefs.getInt(clave + ".modificadores", 0),
                     nombre));
         } catch (IllegalArgumentException e) {
             return Optional.empty(); // datos guardados corruptos: se usa el predeterminado
         }
     }
 
-    public void guardarAtajo(Atajo atajo) {
-        prefs.put(ATAJO_TIPO, atajo.tipo().name());
-        prefs.putInt(ATAJO_CODIGO, atajo.codigo());
-        prefs.putInt(ATAJO_MODS, atajo.modificadores());
-        prefs.put(ATAJO_NOMBRE, atajo.nombre());
+    public void guardarAtajo(String clave, Atajo atajo) {
+        prefs.put(clave + ".tipo", atajo.tipo().name());
+        prefs.putInt(clave + ".codigo", atajo.codigo());
+        prefs.putInt(clave + ".modificadores", atajo.modificadores());
+        prefs.put(clave + ".nombre", atajo.nombre());
         guardar();
     }
 
