@@ -3,7 +3,9 @@ package autoclicker;
 import autoclicker.persistencia.PreferenciasRepository;
 import autoclicker.servicio.AtajoService;
 import autoclicker.servicio.ClickerService;
-import autoclicker.ui.VentanaAutoClicker;
+import autoclicker.servicio.GrabadoraService;
+import autoclicker.servicio.ReproductorService;
+import autoclicker.ui.VentanaPrincipal;
 import autoclicker.ui.tema.Tema;
 import autoclicker.ui.tema.TemaVisual;
 
@@ -28,10 +30,14 @@ public class Main {
             Tema.aplicar(TemaVisual.desde(preferencias.cargarTema().orElse(null)));
 
             try {
-                ClickerService servicio = new ClickerService();
                 AtajoService atajos = new AtajoService();
                 atajos.iniciar();
-                new VentanaAutoClicker(servicio, atajos, preferencias).setVisible(true);
+
+                new VentanaPrincipal(atajos, preferencias,
+                        new ClickerService(),
+                        new GrabadoraService(false), new ReproductorService(),
+                        new GrabadoraService(true), new ReproductorService()
+                ).setVisible(true);
             } catch (AWTException e) {
                 JOptionPane.showMessageDialog(null,
                         "No se pudo controlar el mouse en este sistema:\n" + e.getMessage(),
