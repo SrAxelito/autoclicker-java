@@ -35,6 +35,8 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
     public static final Atajo F8  = tecla(NativeKeyEvent.VC_F8);
     public static final Atajo F9  = tecla(NativeKeyEvent.VC_F9);
     public static final Atajo F10 = tecla(NativeKeyEvent.VC_F10);
+    public static final Atajo F11 = tecla(NativeKeyEvent.VC_F11);
+    public static final Atajo F12 = tecla(NativeKeyEvent.VC_F12);
 
     private final Map<String, Atajo> atajos = new HashMap<>();
     private final Map<String, Runnable> acciones = new HashMap<>();
