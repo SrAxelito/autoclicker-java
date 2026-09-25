@@ -3,46 +3,57 @@ package autoclicker.ui.tema;
 import java.awt.*;
 import java.awt.font.TextAttribute;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Paleta de colores, tipografía y medidas de la interfaz.
- * Todo el estilo visual se cambia desde aquí.
+ * Tema activo, tipografía y medidas de la interfaz.
+ * Los componentes leen los colores con {@code Tema.paleta()} al dibujarse,
+ * así que al cambiar de tema basta con repintar.
  */
 public final class Tema {
 
     private Tema() { }
 
-    // ---- Colores base ----
-    public static final Color FONDO        = new Color(0xF3F4F8);
-    public static final Color TARJETA      = Color.WHITE;
-    public static final Color BORDE        = new Color(0xE3E6EE);
-    public static final Color CAMPO        = new Color(0xF5F6FA);
-    public static final Color TEXTO        = new Color(0x1B1E28);
-    public static final Color TEXTO_SUAVE  = new Color(0x6B7183);
+    // ---- Tema activo ----
 
-    // ---- Colores de acento y estados ----
-    public static final Color ACENTO             = new Color(0x4F6BFF);
-    public static final Color EXITO              = new Color(0x16A34A);
-    public static final Color EXITO_FONDO        = new Color(0xECFDF3);
-    public static final Color EXITO_BORDE        = new Color(0xBBF0CF);
-    public static final Color PELIGRO            = new Color(0xDC2626);
-    public static final Color PELIGRO_FONDO      = new Color(0xFDECEC);
-    public static final Color DESHABILITADO      = new Color(0xE9EBF1);
-    public static final Color TEXTO_DESHABILITADO = new Color(0xA3A8B6);
+    private static volatile TemaVisual actual = TemaVisual.CLARO;
+    private static final List<Runnable> oyentes = new CopyOnWriteArrayList<>();
+
+    public static Paleta paleta() {
+        return actual.paleta();
+    }
+
+    public static TemaVisual actual() {
+        return actual;
+    }
+
+    public static void aplicar(TemaVisual nuevo) {
+        if (nuevo == null || nuevo == actual) return;
+        actual = nuevo;
+        oyentes.forEach(Runnable::run);
+    }
+
+    /** Se ejecuta cada vez que cambia el tema. */
+    public static void alCambiar(Runnable accion) {
+        oyentes.add(accion);
+    }
 
     // ---- Medidas ----
+
     public static final int RADIO = 14;
     public static final int RADIO_CAMPO = 10;
 
     // ---- Tipografía ----
+
     private static final String FAMILIA = elegirFamilia();
 
     private static String elegirFamilia() {
-        String[] disponibles = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .getAvailableFontFamilyNames();
+        List<String> disponibles = Arrays.asList(GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getAvailableFontFamilyNames());
         for (String preferida : new String[]{"Segoe UI", "Inter", "Roboto", "Helvetica Neue"}) {
-            if (Arrays.asList(disponibles).contains(preferida)) return preferida;
+            if (disponibles.contains(preferida)) return preferida;
         }
         return Font.SANS_SERIF;
     }
@@ -51,7 +62,7 @@ public final class Tema {
         return new Font(FAMILIA, estilo, 1).deriveFont(tamano);
     }
 
-    /** Fuente pequeña en mayúsculas con letras espaciadas, para títulos de sección. */
+    /** Fuente pequeña con letras espaciadas, para títulos de sección. */
     public static Font fuenteEtiqueta() {
         return fuente(Font.BOLD, 11f).deriveFont(Map.of(TextAttribute.TRACKING, 0.08f));
     }
