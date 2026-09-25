@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Lógica del autoclicker: controla el mouse con Robot en un hilo aparte.
- * No sabe nada de la interfaz; se comunica mediante ClickerListener.
+ * No sabe nada de la interfaz; se comunica mediante EstadoListener.
  */
 public class ClickerService {
 
@@ -19,7 +19,7 @@ public class ClickerService {
 
     private final Robot robot;
     private final AtomicBoolean corriendo = new AtomicBoolean(false);
-    private volatile ClickerListener listener = ClickerListener.NINGUNO;
+    private volatile EstadoListener listener = EstadoListener.NINGUNO;
     private Thread hilo;
 
     public ClickerService() throws AWTException {
@@ -31,8 +31,8 @@ public class ClickerService {
         this.robot = robot;
     }
 
-    public void setListener(ClickerListener listener) {
-        this.listener = (listener != null) ? listener : ClickerListener.NINGUNO;
+    public void setListener(EstadoListener listener) {
+        this.listener = (listener != null) ? listener : EstadoListener.NINGUNO;
     }
 
     public boolean estaCorriendo() {

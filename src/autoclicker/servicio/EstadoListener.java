@@ -1,22 +1,23 @@
 package autoclicker.servicio;
 
 /**
- * Recibe avisos del ClickerService mientras trabaja.
+ * Recibe avisos de un servicio que trabaja en segundo plano
+ * (el autoclicker o el reproductor de grabaciones).
  *
- * Importante: estos métodos se llaman desde el hilo de clics, no desde
+ * Importante: estos métodos se llaman desde el hilo del servicio, no desde
  * el hilo de la interfaz. Quien los implemente en Swing debe usar
  * SwingUtilities.invokeLater para tocar componentes.
  */
-public interface ClickerListener {
+public interface EstadoListener {
 
-    /** Progreso durante la ejecución (cuenta regresiva, clics hechos). */
+    /** Progreso durante la ejecución. */
     void alCambiarEstado(String mensaje);
 
-    /** Se llama una sola vez cuando la sesión termina por cualquier motivo. */
+    /** Se llama una sola vez cuando el trabajo termina por cualquier motivo. */
     void alTerminar(String mensajeFinal);
 
     /** Listener que no hace nada, para no tener que comprobar null. */
-    ClickerListener NINGUNO = new ClickerListener() {
+    EstadoListener NINGUNO = new EstadoListener() {
         @Override public void alCambiarEstado(String mensaje) { }
         @Override public void alTerminar(String mensajeFinal) { }
     };
