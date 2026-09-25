@@ -20,9 +20,7 @@ public class PanelTarjeta extends JPanel {
         setOpaque(false);
         setBorder(new EmptyBorder(14, 16, 16, 16));
 
-        JLabel etiqueta = new JLabel(titulo.toUpperCase());
-        etiqueta.setFont(Tema.fuenteEtiqueta());
-        etiqueta.setForeground(Tema.TEXTO_SUAVE);
+        Etiqueta etiqueta = new Etiqueta(titulo.toUpperCase(), Etiqueta.Rol.SUAVE, Tema.fuenteEtiqueta());
 
         contenido.setOpaque(false);
 
@@ -40,9 +38,9 @@ public class PanelTarjeta extends JPanel {
         Tema.suavizar(g2);
         RoundRectangle2D forma = new RoundRectangle2D.Float(
                 0.5f, 0.5f, getWidth() - 1f, getHeight() - 1f, Tema.RADIO, Tema.RADIO);
-        g2.setColor(Tema.TARJETA);
+        g2.setColor(Tema.paleta().tarjeta());
         g2.fill(forma);
-        g2.setColor(Tema.BORDE);
+        g2.setColor(Tema.paleta().borde());
         g2.draw(forma);
         g2.dispose();
     }

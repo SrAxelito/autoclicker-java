@@ -23,7 +23,7 @@ public final class Logo {
         Tema.suavizar(g);
         float s = tamano;
 
-        g.setColor(Tema.ACENTO);
+        g.setColor(Tema.paleta().acento());
         g.fill(new RoundRectangle2D.Float(0, 0, s, s, s * 0.32f, s * 0.32f));
 
         // Ondas del clic

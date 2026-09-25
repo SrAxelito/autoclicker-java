@@ -6,6 +6,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 /**
  * Grupo de opciones donde solo una puede estar seleccionada, mostrado
@@ -22,6 +25,7 @@ public class ControlSegmentado<T> extends JComponent {
     private final String[] etiquetas;
     private int seleccionado = 0;
     private int sobre = -1;
+    private final List<Consumer<T>> oyentes = new CopyOnWriteArrayList<>();
 
     /** Usa el toString() de cada valor como texto del segmento. */
     public ControlSegmentado(T[] valores) {
@@ -80,6 +84,11 @@ public class ControlSegmentado<T> extends JComponent {
         }
     }
 
+    /** Se ejecuta cada vez que el usuario (o el código) cambia la selección. */
+    public void alCambiar(Consumer<T> accion) {
+        oyentes.add(accion);
+    }
+
     @Override
     public void setEnabled(boolean habilitado) {
         super.setEnabled(habilitado);
@@ -93,6 +102,7 @@ public class ControlSegmentado<T> extends JComponent {
         if (indice < 0 || indice >= valores.length || indice == seleccionado) return;
         seleccionado = indice;
         repaint();
+        oyentes.forEach(o -> o.accept(valores[seleccionado]));
     }
 
     private int indiceEn(int x) {
@@ -125,9 +135,9 @@ public class ControlSegmentado<T> extends JComponent {
         float h = getHeight();
 
         RoundRectangle2D fondo = new RoundRectangle2D.Float(0.5f, 0.5f, w - 1, h - 1, Tema.RADIO_CAMPO, Tema.RADIO_CAMPO);
-        g2.setColor(Tema.CAMPO);
+        g2.setColor(Tema.paleta().campo());
         g2.fill(fondo);
-        g2.setColor(isFocusOwner() ? Tema.ACENTO : Tema.BORDE);
+        g2.setColor(isFocusOwner() ? Tema.paleta().acento() : Tema.paleta().borde());
         g2.draw(fondo);
 
         float ancho = (w - 2 * RELLENO) / valores.length;
@@ -139,12 +149,12 @@ public class ControlSegmentado<T> extends JComponent {
             boolean activo = i == seleccionado;
 
             if (activo) {
-                g2.setColor(isEnabled() ? Tema.ACENTO : Tema.TEXTO_DESHABILITADO);
+                g2.setColor(isEnabled() ? Tema.paleta().acento() : Tema.paleta().textoDeshabilitado());
                 g2.fill(new RoundRectangle2D.Float(x, RELLENO, ancho, h - 2 * RELLENO,
                         Tema.RADIO_CAMPO - 3, Tema.RADIO_CAMPO - 3));
                 g2.setColor(Color.WHITE);
             } else {
-                g2.setColor(i == sobre && isEnabled() ? Tema.TEXTO : Tema.TEXTO_SUAVE);
+                g2.setColor(i == sobre && isEnabled() ? Tema.paleta().texto() : Tema.paleta().textoSuave());
             }
 
             String texto = etiquetas[i];

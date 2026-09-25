@@ -37,14 +37,14 @@ public class BotonModerno extends JButton {
         Color fondo;
         Color texto;
         if (!isEnabled()) {
-            fondo = Tema.DESHABILITADO;
-            texto = Tema.TEXTO_DESHABILITADO;
+            fondo = Tema.paleta().deshabilitado();
+            texto = Tema.paleta().textoDeshabilitado();
         } else if (variante == Variante.PRIMARIO) {
-            fondo = Tema.ACENTO;
+            fondo = Tema.paleta().acento();
             texto = Color.WHITE;
         } else {
-            fondo = Tema.PELIGRO_FONDO;
-            texto = Tema.PELIGRO;
+            fondo = Tema.paleta().peligroFondo();
+            texto = Tema.paleta().peligro();
         }
 
         if (isEnabled()) {
@@ -54,7 +54,7 @@ public class BotonModerno extends JButton {
             } else if (m.isRollover()) {
                 fondo = variante == Variante.PRIMARIO
                         ? Tema.mezclar(fondo, Color.WHITE, 0.12f)
-                        : Tema.mezclar(fondo, Tema.PELIGRO, 0.10f);
+                        : Tema.mezclar(fondo, Tema.paleta().peligro(), 0.10f);
             }
         }
 
@@ -66,7 +66,7 @@ public class BotonModerno extends JButton {
         if (isFocusOwner() && isEnabled()) {
             g2.setColor(variante == Variante.PRIMARIO
                     ? Tema.mezclar(fondo, Color.WHITE, 0.55f)
-                    : Tema.mezclar(Tema.PELIGRO, Color.WHITE, 0.55f));
+                    : Tema.mezclar(Tema.paleta().peligro(), Tema.paleta().peligroFondo(), 0.5f));
             g2.setStroke(new BasicStroke(2f));
             g2.draw(new RoundRectangle2D.Float(3, 3, w - 6, h - 6, Tema.RADIO - 4, Tema.RADIO - 4));
         }
