@@ -3,6 +3,7 @@ package autoclicker.servicio;
 import autoclicker.modelo.EventoMacro;
 import autoclicker.modelo.EventoMacro.*;
 import autoclicker.modelo.Grabacion;
+import autoclicker.modelo.TipoGrabacion;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import com.github.kwhat.jnativehook.keyboard.SwingKeyAdapter;
 import com.github.kwhat.jnativehook.mouse.NativeMouseEvent;
@@ -15,8 +16,8 @@ import java.awt.event.KeyEvent;
 import java.util.*;
 
 /**
- * Graba movimientos, clics y rueda del mouse, y opcionalmente el teclado,
- * todo en la misma línea de tiempo.
+ * Graba el mouse (movimientos, clics y rueda), el teclado, o ambos a la vez
+ * en la misma línea de tiempo, según el {@link TipoGrabacion}.
  *
  * La posición del mouse se lee con MouseInfo (y no con las coordenadas de
  * JNativeHook) porque así usa el mismo sistema de coordenadas que Robot,
@@ -26,7 +27,7 @@ public class GrabadoraService implements EntradaListener {
 
     private static final long SONDEO_MS = 8;
 
-    private final boolean incluirTeclado;
+    private final TipoGrabacion tipo;
     private final ConversorTeclas conversor = new ConversorTeclas();
     private final List<EventoMacro> eventos = new ArrayList<>();
 
@@ -34,12 +35,12 @@ public class GrabadoraService implements EntradaListener {
     private long inicioNanos;
     private Thread sondeo;
 
-    public GrabadoraService(boolean incluirTeclado) {
-        this.incluirTeclado = incluirTeclado;
+    public GrabadoraService(TipoGrabacion tipo) {
+        this.tipo = tipo;
     }
 
-    public boolean incluyeTeclado() {
-        return incluirTeclado;
+    public TipoGrabacion tipo() {
+        return tipo;
     }
 
     public boolean estaGrabando() {
@@ -58,13 +59,16 @@ public class GrabadoraService implements EntradaListener {
         if (grabando) return;
         eventos.clear();
         inicioNanos = System.nanoTime();
-        Point p = posicionMouse();
-        if (p != null) eventos.add(new MovimientoMouse(0, p.x, p.y));
         grabando = true;
+        sondeo = null;
 
-        sondeo = new Thread(this::sondearMouse, "hilo-grabacion");
-        sondeo.setDaemon(true);
-        sondeo.start();
+        if (tipo.incluyeMouse()) {
+            Point p = posicionMouse();
+            if (p != null) eventos.add(new MovimientoMouse(0, p.x, p.y));
+            sondeo = new Thread(this::sondearMouse, "hilo-grabacion");
+            sondeo.setDaemon(true);
+            sondeo.start();
+        }
     }
 
     /**
@@ -84,7 +88,7 @@ public class GrabadoraService implements EntradaListener {
         if (sondeo != null) sondeo.interrupt();
 
         copia.sort(Comparator.comparingLong(EventoMacro::tiempoMs));
-        if (desdeLaVentana) duracion = quitarUltimoClic(copia, duracion);
+        if (desdeLaVentana && tipo.incluyeMouse()) duracion = quitarUltimoClic(copia, duracion);
         equilibrar(copia, duracion);
         return new Grabacion(copia, duracion);
     }
@@ -109,21 +113,21 @@ public class GrabadoraService implements EntradaListener {
 
     @Override
     public void teclaPresionada(NativeKeyEvent e) {
-        if (!grabando || !incluirTeclado) return;
+        if (!grabando || !tipo.incluyeTeclado()) return;
         int codigo = conversor.codigoJava(e);
         if (codigo != KeyEvent.VK_UNDEFINED) agregar(new PresionTecla(ahora(), codigo));
     }
 
     @Override
     public void teclaSoltada(NativeKeyEvent e) {
-        if (!grabando || !incluirTeclado) return;
+        if (!grabando || !tipo.incluyeTeclado()) return;
         int codigo = conversor.codigoJava(e);
         if (codigo != KeyEvent.VK_UNDEFINED) agregar(new SueltaTecla(ahora(), codigo));
     }
 
     @Override
     public void botonPresionado(NativeMouseEvent e) {
-        if (!grabando) return;
+        if (!grabando || !tipo.incluyeMouse()) return;
         int boton = botonJava(e.getButton());
         if (boton == 0) return;
         Point p = posicionOEvento(e);
@@ -132,7 +136,7 @@ public class GrabadoraService implements EntradaListener {
 
     @Override
     public void botonSoltado(NativeMouseEvent e) {
-        if (!grabando) return;
+        if (!grabando || !tipo.incluyeMouse()) return;
         int boton = botonJava(e.getButton());
         if (boton == 0) return;
         Point p = posicionOEvento(e);
@@ -141,7 +145,7 @@ public class GrabadoraService implements EntradaListener {
 
     @Override
     public void ruedaMovida(NativeMouseWheelEvent e) {
-        if (!grabando) return;
+        if (!grabando || !tipo.incluyeMouse()) return;
         if (e.getWheelDirection() == NativeMouseWheelEvent.WHEEL_HORIZONTAL_DIRECTION) return;
         if (e.getWheelRotation() != 0) agregar(new RuedaMouse(ahora(), e.getWheelRotation()));
     }

@@ -25,6 +25,7 @@ public class ControlSegmentado<T> extends JComponent {
     private final String[] etiquetas;
     private int seleccionado = 0;
     private int sobre = -1;
+    private boolean proporcional = false;
     private final List<Consumer<T>> oyentes = new CopyOnWriteArrayList<>();
 
     /** Usa el toString() de cada valor como texto del segmento. */
@@ -84,6 +85,16 @@ public class ControlSegmentado<T> extends JComponent {
         }
     }
 
+    /**
+     * true: cada segmento mide según su texto (útil para pestañas con nombres
+     * de largo muy distinto). false: todos miden lo mismo.
+     */
+    public void setAnchosProporcionales(boolean proporcional) {
+        this.proporcional = proporcional;
+        revalidate();
+        repaint();
+    }
+
     /** Se ejecuta cada vez que el usuario (o el código) cambia la selección. */
     public void alCambiar(Consumer<T> accion) {
         oyentes.add(accion);
@@ -106,9 +117,37 @@ public class ControlSegmentado<T> extends JComponent {
     }
 
     private int indiceEn(int x) {
-        float ancho = (getWidth() - 2f * RELLENO) / valores.length;
-        int i = (int) ((x - RELLENO) / ancho);
-        return Math.max(0, Math.min(valores.length - 1, i));
+        float[] bordes = bordes(getWidth());
+        for (int i = 0; i < valores.length; i++) {
+            if (x < bordes[i + 1]) return i;
+        }
+        return valores.length - 1;
+    }
+
+    /**
+     * Posición x donde empieza cada segmento; el último valor es donde termina
+     * el último. Con anchos proporcionales, el espacio sobrante se reparte por igual.
+     */
+    private float[] bordes(float anchoTotal) {
+        int n = valores.length;
+        float[] anchos = new float[n];
+        float util = anchoTotal - 2f * RELLENO;
+        if (proporcional) {
+            FontMetrics fm = getFontMetrics(getFont());
+            float suma = 0;
+            for (int i = 0; i < n; i++) {
+                anchos[i] = fm.stringWidth(etiquetas[i]) + 28f;
+                suma += anchos[i];
+            }
+            float extra = (util - suma) / n;
+            for (int i = 0; i < n; i++) anchos[i] += extra;
+        } else {
+            java.util.Arrays.fill(anchos, util / n);
+        }
+        float[] bordes = new float[n + 1];
+        bordes[0] = RELLENO;
+        for (int i = 0; i < n; i++) bordes[i + 1] = bordes[i] + anchos[i];
+        return bordes;
     }
 
     private static String[] textos(Object[] valores) {
@@ -120,6 +159,11 @@ public class ControlSegmentado<T> extends JComponent {
     @Override
     public Dimension getPreferredSize() {
         FontMetrics fm = getFontMetrics(getFont());
+        if (proporcional) {
+            int suma = 0;
+            for (String e : etiquetas) suma += fm.stringWidth(e) + 28;
+            return new Dimension(suma + 2 * RELLENO, 40);
+        }
         int maxTexto = 0;
         for (String e : etiquetas) maxTexto = Math.max(maxTexto, fm.stringWidth(e));
         return new Dimension(valores.length * (maxTexto + 32) + 2 * RELLENO, 40);
@@ -140,12 +184,13 @@ public class ControlSegmentado<T> extends JComponent {
         g2.setColor(isFocusOwner() ? Tema.paleta().acento() : Tema.paleta().borde());
         g2.draw(fondo);
 
-        float ancho = (w - 2 * RELLENO) / valores.length;
+        float[] bordes = bordes(w);
         FontMetrics fm = g2.getFontMetrics(getFont());
         g2.setFont(getFont());
 
         for (int i = 0; i < valores.length; i++) {
-            float x = RELLENO + i * ancho;
+            float x = bordes[i];
+            float ancho = bordes[i + 1] - bordes[i];
             boolean activo = i == seleccionado;
 
             if (activo) {

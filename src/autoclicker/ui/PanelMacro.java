@@ -120,8 +120,13 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
         if (grabadora.estaGrabando()) {
             relojGrabacion.stop();
             grabacion = grabadora.detener(desdeLaVentana);
-            resumen.setText(describir(grabacion));
-            estado.setEstado("Grabación lista", IndicadorEstado.Tono.INACTIVO);
+            if (grabacion.estaVacia()) {
+                resumen.setText("Todavía no hay nada grabado");
+                estado.setEstado("No se grabó ninguna acción", IndicadorEstado.Tono.INACTIVO);
+            } else {
+                resumen.setText(describir(grabacion));
+                estado.setEstado("Grabación lista", IndicadorEstado.Tono.INACTIVO);
+            }
         } else {
             grabadora.iniciar();
             relojGrabacion.start();
@@ -193,8 +198,10 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
 
     private String describir(Grabacion g) {
         StringBuilder sb = new StringBuilder(segundos(g.duracionMs()));
-        sb.append("  ·  ").append(plural(g.cantidadClics(), "clic", "clics"));
-        if (grabadora.incluyeTeclado()) {
+        if (grabadora.tipo().incluyeMouse()) {
+            sb.append("  ·  ").append(plural(g.cantidadClics(), "clic", "clics"));
+        }
+        if (grabadora.tipo().incluyeTeclado()) {
             sb.append("  ·  ").append(plural(g.cantidadTeclas(), "tecla", "teclas"));
         }
         return sb.toString();

@@ -40,6 +40,7 @@ public class VentanaPrincipal extends JFrame {
     public VentanaPrincipal(AtajoService atajos, PreferenciasRepository preferencias,
                             ClickerService clicker,
                             GrabadoraService grabadoraMouse, ReproductorService reproductorMouse,
+                            GrabadoraService grabadoraTeclado, ReproductorService reproductorTeclado,
                             GrabadoraService grabadoraCompleta, ReproductorService reproductorCompleto) {
         super("AutoClicker");
         this.atajos = atajos;
@@ -50,13 +51,18 @@ public class VentanaPrincipal extends JFrame {
                         "Graba movimientos, clics y rueda del mouse",
                         "atajo.mouse", AtajoService.F7, AtajoService.F8,
                         grabadoraMouse, reproductorMouse, atajos, preferencias),
+                new PanelMacro("Teclado",
+                        "Graba las teclas que presionas y sueltas",
+                        "atajo.teclado", AtajoService.F9, AtajoService.F10,
+                        grabadoraTeclado, reproductorTeclado, atajos, preferencias),
                 new PanelMacro("Mouse + Teclado",
                         "Graba el mouse y el teclado al mismo tiempo",
-                        "atajo.completo", AtajoService.F9, AtajoService.F10,
+                        "atajo.completo", AtajoService.F11, AtajoService.F12,
                         grabadoraCompleta, reproductorCompleto, atajos, preferencias));
 
         String[] titulos = modos.stream().map(ModoPanel::titulo).toArray(String[]::new);
         pestanas = new ControlSegmentado<>(modos.toArray(new ModoPanel[0]), titulos);
+        pestanas.setAnchosProporcionales(true);
         pestanas.alCambiar(this::mostrarModo);
 
         contenido.setOpaque(false);
