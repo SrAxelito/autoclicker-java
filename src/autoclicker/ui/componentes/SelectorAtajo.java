@@ -137,8 +137,13 @@ public class SelectorAtajo extends JComponent {
         } else {
             float finTecla = dibujarTecla(g2, fm, h, activo, p);
             FontMetrics fmAyuda = g2.getFontMetrics(Tema.fuente(Font.PLAIN, 12f));
-            if (activo && finTecla + 16 + fmAyuda.stringWidth("Clic para cambiar") + 14 <= w) {
-                dibujarAyuda(g2, "Clic para cambiar", w, base, p);
+            if (activo) {
+                for (String ayuda : new String[]{"Clic para cambiar", "Cambiar"}) {
+                    if (finTecla + 16 + fmAyuda.stringWidth(ayuda) + 14 <= w) {
+                        dibujarAyuda(g2, ayuda, w, base, p);
+                        break;
+                    }
+                }
             }
         }
         g2.dispose();

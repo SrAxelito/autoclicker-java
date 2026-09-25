@@ -4,13 +4,14 @@ Herramienta de automatización de escritorio hecha en Java (Swing + `java.awt.Ro
 
 ## Modos
 
-La ventana tiene tres pestañas. Los atajos de cada modo solo responden mientras su pestaña está abierta.
+La ventana tiene cuatro pestañas. Los atajos de cada modo solo responden mientras su pestaña está abierta.
 
 | Modo | Qué hace | Atajos por defecto |
 |---|---|---|
 | Autoclicker | Clics repetidos en la posición del mouse | F6 iniciar / detener |
 | Mouse | Graba y reproduce movimientos, clics y rueda | F7 grabar · F8 reproducir |
-| Mouse + Teclado | Graba y reproduce mouse y teclado a la vez | F9 grabar · F10 reproducir |
+| Teclado | Graba y reproduce solo el teclado | F9 grabar · F10 reproducir |
+| Mouse + Teclado | Graba y reproduce mouse y teclado a la vez | F11 grabar · F12 reproducir |
 
 En los modos de grabación se elige cuántas veces repetir (0 = hasta detener). La reproducción respeta los tiempos originales y, si se detiene a mitad, suelta cualquier tecla o botón que hubiera quedado presionado.
 
@@ -37,7 +38,8 @@ src/autoclicker/
 │   ├── BotonMouse.java               Botones disponibles
 │   ├── ConfiguracionClics.java       Parámetros del autoclicker
 │   ├── EventoMacro.java              Acciones grabables (mouse y teclado)
-│   └── Grabacion.java                Secuencia de acciones con su duración
+│   ├── Grabacion.java                Secuencia de acciones con su duración
+│   └── TipoGrabacion.java            Qué graba cada modo: mouse, teclado o ambos
 ├── persistencia/
 │   └── PreferenciasRepository.java   Guarda atajos y tema (java.util.prefs)
 ├── servicio/
@@ -45,12 +47,12 @@ src/autoclicker/
 │   ├── ClickerService.java           Lógica del autoclicker (Robot + hilo)
 │   ├── EntradaListener.java          Pulsaciones que no son atajos
 │   ├── EstadoListener.java           Notificaciones de progreso
-│   ├── GrabadoraService.java         Graba mouse y teclado
+│   ├── GrabadoraService.java         Graba mouse, teclado o ambos
 │   └── ReproductorService.java       Reproduce grabaciones con Robot
 └── ui/
     ├── VentanaPrincipal.java         Ventana con pestañas de modos
     ├── PanelAutoclicker.java         Pestaña Autoclicker
-    ├── PanelMacro.java               Pestañas de grabación
+    ├── PanelMacro.java               Pestañas de grabación (Mouse, Teclado, Mouse + Teclado)
     ├── ModoPanel.java                Contrato de cada pestaña
     ├── AtajoConfigurable.java        Atajo + selector + preferencias
     ├── Diseno.java                   Utilidades de maquetación

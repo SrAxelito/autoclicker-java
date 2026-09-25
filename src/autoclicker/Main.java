@@ -1,5 +1,6 @@
 package autoclicker;
 
+import autoclicker.modelo.TipoGrabacion;
 import autoclicker.persistencia.PreferenciasRepository;
 import autoclicker.servicio.AtajoService;
 import autoclicker.servicio.ClickerService;
@@ -35,8 +36,9 @@ public class Main {
 
                 new VentanaPrincipal(atajos, preferencias,
                         new ClickerService(),
-                        new GrabadoraService(false), new ReproductorService(),
-                        new GrabadoraService(true), new ReproductorService()
+                        new GrabadoraService(TipoGrabacion.MOUSE), new ReproductorService(),
+                        new GrabadoraService(TipoGrabacion.TECLADO), new ReproductorService(),
+                        new GrabadoraService(TipoGrabacion.COMPLETA), new ReproductorService()
                 ).setVisible(true);
             } catch (AWTException e) {
                 JOptionPane.showMessageDialog(null,
