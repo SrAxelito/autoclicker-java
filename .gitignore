@@ -1,5 +1,9 @@
-# Archivos compilados y generados por construir.bat
+# Archivos generados por construir.bat / construir.sh
 *.class
+build/
+dist/
+
+# Carpetas de versiones anteriores del script
 out/
 app/
 salida/
