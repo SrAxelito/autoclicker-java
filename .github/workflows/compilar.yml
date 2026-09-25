@@ -31,10 +31,11 @@ jobs:
         id: version
         shell: bash
         run: |
+          # Con etiqueta vX.Y.Z se usa esa versión; sin etiqueta, la que traen los scripts
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "valor=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           else
-            echo "valor=0.0.0" >> "$GITHUB_OUTPUT"
+            echo "valor=" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Compilar (Windows)
