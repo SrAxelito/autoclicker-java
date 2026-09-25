@@ -25,8 +25,8 @@ public class CampoNumerico extends JPanel {
     private final int paso;
     private int valor;
 
-    private final JTextField campo = new JTextField(5);
-    private final JLabel unidad;
+    private final JTextField campo = new CampoTexto();
+    private final Etiqueta unidad;
     private final BotonPaso menos = new BotonPaso(false);
     private final BotonPaso mas = new BotonPaso(true);
 
@@ -43,10 +43,6 @@ public class CampoNumerico extends JPanel {
         campo.setOpaque(false);
         campo.setBorder(new EmptyBorder(0, 4, 0, 4));
         campo.setFont(Tema.fuente(Font.BOLD, 15f));
-        campo.setForeground(Tema.TEXTO);
-        campo.setDisabledTextColor(Tema.TEXTO_DESHABILITADO);
-        campo.setCaretColor(Tema.ACENTO);
-        campo.setSelectionColor(Tema.mezclar(Tema.ACENTO, Color.WHITE, 0.75f));
         campo.setHorizontalAlignment(SwingConstants.RIGHT);
         ((AbstractDocument) campo.getDocument()).setDocumentFilter(new SoloDigitos(9));
 
@@ -62,9 +58,7 @@ public class CampoNumerico extends JPanel {
             }
         });
 
-        unidad = new JLabel(textoUnidad);
-        unidad.setFont(Tema.fuente(Font.PLAIN, 13f));
-        unidad.setForeground(Tema.TEXTO_SUAVE);
+        unidad = new Etiqueta(textoUnidad, Etiqueta.Rol.SUAVE, Tema.fuente(Font.PLAIN, 13f));
 
         JPanel centro = new JPanel(new BorderLayout(2, 0));
         centro.setOpaque(false);
@@ -97,7 +91,7 @@ public class CampoNumerico extends JPanel {
         campo.setEnabled(habilitado);
         menos.setEnabled(habilitado);
         mas.setEnabled(habilitado);
-        unidad.setForeground(habilitado ? Tema.TEXTO_SUAVE : Tema.TEXTO_DESHABILITADO);
+        unidad.setAtenuada(!habilitado);
         repaint();
     }
 
@@ -130,13 +124,29 @@ public class CampoNumerico extends JPanel {
         Tema.suavizar(g2);
         RoundRectangle2D forma = new RoundRectangle2D.Float(
                 0.5f, 0.5f, getWidth() - 1f, getHeight() - 1f, Tema.RADIO_CAMPO, Tema.RADIO_CAMPO);
-        g2.setColor(isEnabled() ? Tema.CAMPO : Tema.DESHABILITADO);
+        g2.setColor(isEnabled() ? Tema.paleta().campo() : Tema.paleta().deshabilitado());
         g2.fill(forma);
         boolean enfocado = campo.isFocusOwner();
-        g2.setColor(enfocado ? Tema.ACENTO : Tema.BORDE);
+        g2.setColor(enfocado ? Tema.paleta().acento() : Tema.paleta().borde());
         g2.setStroke(new BasicStroke(enfocado ? 1.6f : 1f));
         g2.draw(forma);
         g2.dispose();
+    }
+
+    // ---- Campo de texto que toma sus colores del tema activo ----
+
+    private static final class CampoTexto extends JTextField {
+        CampoTexto() {
+            super(5);
+        }
+
+        @Override public Color getForeground()        { return Tema.paleta().texto(); }
+        @Override public Color getDisabledTextColor() { return Tema.paleta().textoDeshabilitado(); }
+        @Override public Color getCaretColor()        { return Tema.paleta().acento(); }
+        @Override public Color getSelectedTextColor() { return Tema.paleta().texto(); }
+        @Override public Color getSelectionColor() {
+            return Tema.mezclar(Tema.paleta().acento(), Tema.paleta().campo(), 0.7f);
+        }
     }
 
     // ---- Botón − / + ----
@@ -164,12 +174,12 @@ public class CampoNumerico extends JPanel {
             int h = getHeight();
 
             if (isEnabled() && (getModel().isRollover() || getModel().isPressed())) {
-                g2.setColor(getModel().isPressed() ? Tema.mezclar(Tema.BORDE, Color.BLACK, 0.06f) : Tema.BORDE);
+                g2.setColor(getModel().isPressed() ? Tema.mezclar(Tema.paleta().borde(), Color.BLACK, 0.06f) : Tema.paleta().borde());
                 g2.fill(new RoundRectangle2D.Float(0, 0, w, h, 8, 8));
             }
 
-            g2.setColor(!isEnabled() ? Tema.TEXTO_DESHABILITADO
-                    : getModel().isRollover() ? Tema.TEXTO : Tema.TEXTO_SUAVE);
+            g2.setColor(!isEnabled() ? Tema.paleta().textoDeshabilitado()
+                    : getModel().isRollover() ? Tema.paleta().texto() : Tema.paleta().textoSuave());
             g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             float cx = w / 2f;
             float cy = h / 2f;

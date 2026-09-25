@@ -4,9 +4,6 @@ import autoclicker.modelo.BotonMouse;
 import autoclicker.modelo.ConfiguracionClics;
 
 import java.awt.AWTException;
-import java.awt.MouseInfo;
-import java.awt.Point;
-import java.awt.PointerInfo;
 import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,7 +14,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class ClickerService {
 
-    private static final int MARGEN_ESQUINA_PX = 5;
     private static final int PAUSA_PRESION_MS = 10;
     private static final int PAUSA_DOBLE_CLIC_MS = 40;
 
@@ -68,13 +64,8 @@ public class ClickerService {
             }
 
             int mascara = mascaraDe(config.boton());
-            boolean porEsquina = false;
 
             while (corriendo.get() && (config.esInfinito() || hechos < config.maxClics())) {
-                if (mouseEnEsquinaSeguridad()) {
-                    porEsquina = true;
-                    break;
-                }
                 clic(mascara);
                 if (config.dobleClic()) {
                     robot.delay(PAUSA_DOBLE_CLIC_MS);
@@ -85,9 +76,7 @@ public class ClickerService {
                 Thread.sleep(config.intervaloMs());
             }
 
-            if (porEsquina) {
-                mensajeFinal = "Detenido (esquina de seguridad) — " + hechos + " clics";
-            } else if (!config.esInfinito() && hechos >= config.maxClics()) {
+            if (!config.esInfinito() && hechos >= config.maxClics()) {
                 mensajeFinal = "Terminado — " + hechos + " clics";
             } else {
                 mensajeFinal = "Detenido — " + hechos + " clics";
@@ -105,13 +94,6 @@ public class ClickerService {
         robot.mousePress(mascara);
         robot.delay(PAUSA_PRESION_MS);
         robot.mouseRelease(mascara);
-    }
-
-    private boolean mouseEnEsquinaSeguridad() {
-        PointerInfo info = MouseInfo.getPointerInfo();
-        if (info == null) return false;
-        Point p = info.getLocation();
-        return p.x <= MARGEN_ESQUINA_PX && p.y <= MARGEN_ESQUINA_PX;
     }
 
     private static int mascaraDe(BotonMouse boton) {

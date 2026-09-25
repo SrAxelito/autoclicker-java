@@ -8,3 +8,8 @@ salida/
 .idea/
 .vscode/
 *.iml
+
+# Librerías nativas que JNativeHook extrae al ejecutarse
+lib/*.dll
+lib/*.so
+lib/*.dylib
