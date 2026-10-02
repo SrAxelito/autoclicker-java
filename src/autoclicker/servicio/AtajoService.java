@@ -54,6 +54,14 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
     private Consumer<Atajo> capturaPendiente;
     private boolean tolerarModificadores = false;
     private boolean disponible = false;
+    private FalloEscucha fallo = null;
+
+    /**
+     * Por qué no se pudo activar la escucha global.
+     * @param resumen una línea corta, para mostrar en la ventana
+     * @param ayuda   explicación y pasos para resolverlo, para un diálogo
+     */
+    public record FalloEscucha(String resumen, String ayuda) { }
 
     /**
      * Activa la escucha global.
@@ -71,8 +79,13 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
             GlobalScreen.addNativeMouseListener(this);
             GlobalScreen.addNativeMouseWheelListener(this);
             disponible = true;
-        } catch (NativeHookException | LinkageError e) {
+            fallo = null;
+        } catch (NativeHookException e) {
             disponible = false;
+            fallo = describir(e);
+        } catch (LinkageError e) {
+            disponible = false;
+            fallo = describir(e);
         }
         return disponible;
     }
@@ -91,6 +104,11 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
 
     public boolean estaDisponible() {
         return disponible;
+    }
+
+    /** Por qué falló la escucha global; vacío si está activa. */
+    public Optional<FalloEscucha> fallo() {
+        return Optional.ofNullable(fallo);
     }
 
     // ---- Registro de atajos ----
@@ -249,6 +267,52 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
             if (a != null && a.coincideConBoton(boton)) return acciones.get(clave);
         }
         return null;
+    }
+
+    // ---- Diagnóstico de fallos ----
+
+    /** Traduce el código de error de JNativeHook a un mensaje que el usuario pueda entender. */
+    static FalloEscucha describir(NativeHookException e) {
+        String tecnico = "\n\nDetalle técnico: "
+                + (e.getMessage() != null ? e.getMessage() : "código " + e.getCode());
+        return switch (e.getCode()) {
+            case NativeHookException.DARWIN_AXAPI_DISABLED,
+                 NativeHookException.DARWIN_CREATE_EVENT_PORT -> new FalloEscucha(
+                    "Faltan permisos de macOS para los atajos",
+                    "Activa AutoClicker en Configuración del Sistema → Privacidad y seguridad, "
+                            + "en Accesibilidad y en Monitoreo de entrada, y vuelve a abrir la aplicación."
+                            + tecnico);
+            case NativeHookException.X11_OPEN_DISPLAY -> new FalloEscucha(
+                    "No se pudo abrir la pantalla X11",
+                    "La escucha global de Linux necesita una sesión X11. En Wayland no funciona: "
+                            + "en la pantalla de inicio de sesión elige \"Ubuntu en Xorg\" "
+                            + "(o el equivalente de tu distribución)." + tecnico);
+            case NativeHookException.X11_RECORD_NOT_FOUND,
+                 NativeHookException.X11_RECORD_ALLOC_RANGE,
+                 NativeHookException.X11_RECORD_CREATE_CONTEXT,
+                 NativeHookException.X11_RECORD_ENABLE_CONTEXT,
+                 NativeHookException.X11_RECORD_GET_CONTEXT -> new FalloEscucha(
+                    "X11 no ofrece la extensión para los atajos",
+                    "El servidor X11 de esta sesión no permite la extensión XRecord, que la escucha "
+                            + "global necesita. Prueba con una sesión X11 estándar (Xorg)." + tecnico);
+            case NativeHookException.WIN_SET_HOOK -> new FalloEscucha(
+                    "Windows no permitió activar los atajos",
+                    "Windows rechazó registrar la escucha de teclado y mouse. Puede estar bloqueada "
+                            + "por un antivirus o una directiva del sistema." + tecnico);
+            default -> new FalloEscucha(
+                    "No se pudo activar la escucha global",
+                    "El resto de la aplicación sigue funcionando, pero los atajos globales y la "
+                            + "grabación de clics y teclas pueden no estar disponibles." + tecnico);
+        };
+    }
+
+    /** Falla al cargar la librería nativa (sistema o procesador no soportado, carpeta sin permisos...). */
+    static FalloEscucha describir(LinkageError e) {
+        return new FalloEscucha(
+                "No se pudo cargar la librería nativa",
+                "JNativeHook no pudo cargar su librería para este sistema o procesador, o la carpeta "
+                        + "de datos de la aplicación no permite escribir."
+                        + "\n\nDetalle técnico: " + e);
     }
 
     // ---- Utilidades ----

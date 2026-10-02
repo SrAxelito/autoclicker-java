@@ -88,6 +88,7 @@ public class VentanaPrincipal extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override public void windowOpened(WindowEvent e) {
                 getContentPane().requestFocusInWindow();
+                avisarSiFallaLaEscucha();
             }
             @Override public void windowClosing(WindowEvent e) {
                 modos.forEach(ModoPanel::detenerTodo);
@@ -102,6 +103,20 @@ public class VentanaPrincipal extends JFrame {
         if (atajos.estaCapturando()) atajos.cancelarCaptura();
         tarjetas.show(contenido, modo.titulo());
         atajos.activarSolo(modo.clavesAtajo());
+    }
+
+    /** Si la escucha global no arrancó, explica por qué y qué hacer (un solo aviso al abrir). */
+    private void avisarSiFallaLaEscucha() {
+        atajos.fallo().ifPresent(fallo -> SwingUtilities.invokeLater(() -> {
+            String html = "<html><body style='width: 340px'><b>" + escaparHtml(fallo.resumen()) + "</b><br><br>"
+                    + escaparHtml(fallo.ayuda()).replace("\n", "<br>") + "</body></html>";
+            JOptionPane.showMessageDialog(this, html,
+                    "Atajos globales no disponibles", JOptionPane.WARNING_MESSAGE);
+        }));
+    }
+
+    private static String escaparHtml(String texto) {
+        return texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     /** Mientras un modo está trabajando no se puede cambiar de pestaña ni abrir opciones. */

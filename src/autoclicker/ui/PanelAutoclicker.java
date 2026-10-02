@@ -116,9 +116,10 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     }
 
     private String notaAtajo() {
-        return atajos.estaDisponible()
-                ? "Funciona aunque la ventana no esté activa"
-                : "No se pudo activar la escucha global del teclado";
+        if (atajos.estaDisponible()) return "Funciona aunque la ventana no esté activa";
+        return atajos.fallo()
+                .map(AtajoService.FalloEscucha::resumen)
+                .orElse("No se pudo activar la escucha global del teclado");
     }
 
     private void mostrarAtajo() {
