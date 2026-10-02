@@ -21,6 +21,7 @@ import java.util.List;
 class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
 
     private static final String CLAVE_ATAJO = "atajo"; // se mantiene la clave de versiones anteriores
+    private static final int REFRESCO_PROGRESO_MS = 100;
 
     private final ClickerService servicio;
     private final AtajoService atajos;
@@ -38,6 +39,7 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     private final BotonModerno iniciarBtn = new BotonModerno("Iniciar", BotonModerno.Variante.PRIMARIO);
     private final BotonModerno detenerBtn = new BotonModerno("Detener", BotonModerno.Variante.PELIGRO);
     private final IndicadorEstado estado = new IndicadorEstado();
+    private final Timer relojProgreso = new Timer(REFRESCO_PROGRESO_MS, e -> mostrarProgreso());
 
     PanelAutoclicker(ClickerService servicio, AtajoService atajos, PreferenciasRepository preferencias) {
         super(new GridBagLayout());
@@ -97,6 +99,7 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
                     tipoControl.getSeleccion());
             habilitarControles(false);
             servicio.iniciar(config);
+            relojProgreso.start();
         } catch (IllegalArgumentException | NullPointerException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Configuración inválida", JOptionPane.WARNING_MESSAGE);
@@ -125,6 +128,14 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
         }
     }
 
+    /** Se ejecuta en el hilo de Swing: lee el contador del servicio en lugar de recibir un aviso por clic. */
+    private void mostrarProgreso() {
+        int hechos = servicio.clicsHechos();
+        if (hechos > 0 && servicio.estaCorriendo()) {
+            estado.setEstado("Clicando... " + hechos + " clics", IndicadorEstado.Tono.ACTIVO);
+        }
+    }
+
     // ---- EstadoListener (llegan desde el hilo de clics) ----
 
     @Override
@@ -135,6 +146,7 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     @Override
     public void alTerminar(String mensajeFinal) {
         SwingUtilities.invokeLater(() -> {
+            relojProgreso.stop();
             estado.setEstado(mensajeFinal, IndicadorEstado.Tono.INACTIVO);
             habilitarControles(true);
         });
