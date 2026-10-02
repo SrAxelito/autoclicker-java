@@ -27,6 +27,7 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     private final AtajoService atajos;
     private final AtajoConfigurable atajo;
     private Runnable alCambiarOcupado = () -> { };
+    private boolean ocupado = false;   // solo se toca desde el hilo de Swing
 
     private final CampoNumerico intervaloCampo = new CampoNumerico(100, 1, 600_000, 10, "ms");
     private final CampoNumerico esperaCampo    = new CampoNumerico(3, 0, 60, 1, "s");
@@ -74,7 +75,7 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     @Override public String titulo() { return "Autoclicker"; }
     @Override public JComponent vista() { return this; }
     @Override public List<String> clavesAtajo() { return List.of(atajo.clave()); }
-    @Override public boolean estaOcupado() { return detenerBtn.isEnabled(); }
+    @Override public boolean estaOcupado() { return ocupado; }
 
     @Override
     public void setAlCambiarOcupado(Runnable accion) {
@@ -97,9 +98,11 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
                     esperaCampo.getValor(),
                     botonControl.getSeleccion(),
                     tipoControl.getSeleccion());
-            habilitarControles(false);
-            servicio.iniciar(config);
+            // Si el hilo anterior aún termina, no se inició nada: no se bloquea la interfaz,
+            // porque nadie la desbloquearía después.
+            if (!servicio.iniciar(config)) return;
             relojProgreso.start();
+            habilitarControles(false);
         } catch (IllegalArgumentException | NullPointerException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Configuración inválida", JOptionPane.WARNING_MESSAGE);
@@ -108,9 +111,9 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
 
     /** Lo que hace el atajo: detener si está trabajando, iniciar si está quieto. */
     private void alternar() {
-        if (detenerBtn.isEnabled()) {
+        if (ocupado) {
             servicio.detener();
-        } else if (iniciarBtn.isEnabled()) {
+        } else {
             iniciar();
         }
     }
@@ -154,6 +157,7 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     }
 
     private void habilitarControles(boolean habilitar) {
+        ocupado = !habilitar;
         iniciarBtn.setEnabled(habilitar);
         detenerBtn.setEnabled(!habilitar);
         intervaloCampo.setEnabled(habilitar);

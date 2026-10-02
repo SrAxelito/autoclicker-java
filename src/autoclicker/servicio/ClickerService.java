@@ -55,13 +55,19 @@ public class ClickerService {
         return clics.get();
     }
 
-    public synchronized void iniciar(ConfiguracionClics config) {
-        if (hilo != null && hilo.isAlive()) return;   // ya hay una sesión activa
+    /**
+     * Inicia una sesión de clics.
+     * @return false si no se inició porque el hilo de la sesión anterior todavía está terminando;
+     *         en ese caso no habrá avisos al listener, así que quien llama no debe esperar un alTerminar
+     */
+    public synchronized boolean iniciar(ConfiguracionClics config) {
+        if (hilo != null && hilo.isAlive()) return false;   // el hilo anterior aún no termina
         clics.set(0);
         corriendo.set(true);
         hilo = new Thread(() -> ejecutar(config), "hilo-clics");
         hilo.setDaemon(true);
         hilo.start();
+        return true;
     }
 
     public synchronized void detener() {
