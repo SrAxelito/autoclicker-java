@@ -31,14 +31,21 @@ public class Main {
             Tema.aplicar(TemaVisual.desde(preferencias.cargarTema().orElse(null)));
 
             try {
+                // Primero lo que puede fallar (Robot lanza AWTException): si falla,
+                // todavía no se ha registrado la escucha global, que mantiene viva la JVM.
+                ClickerService clicker = new ClickerService();
+                ReproductorService reproductorMouse = new ReproductorService();
+                ReproductorService reproductorTeclado = new ReproductorService();
+                ReproductorService reproductorCompleto = new ReproductorService();
+
                 AtajoService atajos = new AtajoService();
                 atajos.iniciar();
 
                 new VentanaPrincipal(atajos, preferencias,
-                        new ClickerService(),
-                        new GrabadoraService(TipoGrabacion.MOUSE), new ReproductorService(),
-                        new GrabadoraService(TipoGrabacion.TECLADO), new ReproductorService(),
-                        new GrabadoraService(TipoGrabacion.COMPLETA), new ReproductorService()
+                        clicker,
+                        new GrabadoraService(TipoGrabacion.MOUSE), reproductorMouse,
+                        new GrabadoraService(TipoGrabacion.TECLADO), reproductorTeclado,
+                        new GrabadoraService(TipoGrabacion.COMPLETA), reproductorCompleto
                 ).setVisible(true);
             } catch (AWTException e) {
                 JOptionPane.showMessageDialog(null,
