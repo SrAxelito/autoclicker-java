@@ -8,6 +8,7 @@ import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Lógica del autoclicker: controla el mouse con Robot en un hilo aparte.
@@ -16,6 +17,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * El intervalo configurado es el tiempo entre el INICIO de un clic y el
  * inicio del siguiente. Lo que tarda cada clic (pausas de presión y de doble
  * clic) cuenta dentro de ese intervalo, no se suma a él.
+ *
+ * El progreso no se notifica clic a clic: quien lo muestre debe consultar
+ * {@link #clicsHechos()} cada cierto tiempo. El listener solo recibe avisos
+ * puntuales (cuenta regresiva, inicio y final).
  */
 public class ClickerService {
 
@@ -24,6 +29,7 @@ public class ClickerService {
 
     private final Robot robot;
     private final AtomicBoolean corriendo = new AtomicBoolean(false);
+    private final AtomicInteger clics = new AtomicInteger();
     private volatile EstadoListener listener = EstadoListener.NINGUNO;
     private Thread hilo;
 
@@ -44,8 +50,14 @@ public class ClickerService {
         return corriendo.get();
     }
 
+    /** Clics (o dobles clics) hechos en la sesión actual o en la última. Se puede leer desde cualquier hilo. */
+    public int clicsHechos() {
+        return clics.get();
+    }
+
     public synchronized void iniciar(ConfiguracionClics config) {
         if (hilo != null && hilo.isAlive()) return;   // ya hay una sesión activa
+        clics.set(0);
         corriendo.set(true);
         hilo = new Thread(() -> ejecutar(config), "hilo-clics");
         hilo.setDaemon(true);
@@ -68,6 +80,7 @@ public class ClickerService {
                 Thread.sleep(1000);
             }
 
+            listener.alCambiarEstado("Clicando...");
             int mascara = mascaraDe(config.boton());
             long intervaloNs = TimeUnit.MILLISECONDS.toNanos(config.intervaloMs());
             long siguiente = System.nanoTime();   // instante en que debe empezar el próximo clic
@@ -78,8 +91,7 @@ public class ClickerService {
                     robot.delay(PAUSA_DOBLE_CLIC_MS);
                     clic(mascara);
                 }
-                hechos++;
-                listener.alCambiarEstado("Clicando... " + hechos + " clics");
+                hechos = clics.incrementAndGet();
 
                 // Al llegar al último clic no hay nada que esperar
                 if (!config.esInfinito() && hechos >= config.maxClics()) break;
