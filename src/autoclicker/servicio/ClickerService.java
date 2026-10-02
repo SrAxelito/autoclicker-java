@@ -6,11 +6,16 @@ import autoclicker.modelo.ConfiguracionClics;
 import java.awt.AWTException;
 import java.awt.Robot;
 import java.awt.event.InputEvent;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Lógica del autoclicker: controla el mouse con Robot en un hilo aparte.
  * No sabe nada de la interfaz; se comunica mediante EstadoListener.
+ *
+ * El intervalo configurado es el tiempo entre el INICIO de un clic y el
+ * inicio del siguiente. Lo que tarda cada clic (pausas de presión y de doble
+ * clic) cuenta dentro de ese intervalo, no se suma a él.
  */
 public class ClickerService {
 
@@ -64,6 +69,8 @@ public class ClickerService {
             }
 
             int mascara = mascaraDe(config.boton());
+            long intervaloNs = TimeUnit.MILLISECONDS.toNanos(config.intervaloMs());
+            long siguiente = System.nanoTime();   // instante en que debe empezar el próximo clic
 
             while (corriendo.get() && (config.esInfinito() || hechos < config.maxClics())) {
                 clic(mascara);
@@ -73,7 +80,19 @@ public class ClickerService {
                 }
                 hechos++;
                 listener.alCambiarEstado("Clicando... " + hechos + " clics");
-                Thread.sleep(config.intervaloMs());
+
+                // Al llegar al último clic no hay nada que esperar
+                if (!config.esInfinito() && hechos >= config.maxClics()) break;
+
+                siguiente += intervaloNs;
+                long falta = siguiente - System.nanoTime();
+                if (falta > 0) {
+                    TimeUnit.NANOSECONDS.sleep(falta);
+                } else {
+                    // El clic tardó más que el intervalo: no se acumula "deuda" ni se
+                    // disparan clics seguidos para recuperar el tiempo perdido.
+                    siguiente = System.nanoTime();
+                }
             }
 
             if (!config.esInfinito() && hechos >= config.maxClics()) {
