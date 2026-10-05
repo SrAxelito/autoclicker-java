@@ -1,6 +1,5 @@
 package autoclicker.ui;
 
-import autoclicker.modelo.Atajo;
 import autoclicker.modelo.Grabacion;
 import autoclicker.persistencia.PreferenciasRepository;
 import autoclicker.servicio.AtajoService;
@@ -13,17 +12,18 @@ import autoclicker.ui.componentes.Etiqueta;
 import autoclicker.ui.componentes.IndicadorEstado;
 import autoclicker.ui.tema.Tema;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import java.awt.Font;
 import java.util.List;
 import java.util.Locale;
 
 /**
  * Pestaña de grabación: graba lo que hace el usuario y lo reproduce
- * las veces indicadas. Sirve tanto para "solo mouse" como para
- * "mouse y teclado", según la grabadora que reciba.
+ * las veces indicadas. Es la misma clase para "Mouse", "Teclado" y
+ * "Mouse + Teclado"; lo que cambia entre ellas viene en el {@link ModoGrabacion}.
  */
-class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
+class PanelMacro extends PanelModo implements EstadoListener {
 
     private static final int REFRESCO_GRABACION_MS = 200;
 
@@ -33,7 +33,6 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
     private final AtajoService atajos;
     private final AtajoConfigurable atajoGrabar;
     private final AtajoConfigurable atajoReproducir;
-    private Runnable alCambiarOcupado = () -> { };
 
     private Grabacion grabacion = Grabacion.VACIA;
 
@@ -45,23 +44,15 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
     private final BotonModerno reproducirBtn = new BotonModerno("Reproducir", BotonModerno.Variante.PRIMARIO);
     private final Timer relojGrabacion = new Timer(REFRESCO_GRABACION_MS, e -> mostrarProgresoGrabacion());
 
-    /**
-     * @param prefijoAtajos prefijo para guardar sus atajos, por ejemplo "atajo.mouse"
-     */
-    PanelMacro(String titulo, String descripcion, String prefijoAtajos,
-               Atajo atajoGrabarPredeterminado, Atajo atajoReproducirPredeterminado,
-               GrabadoraService grabadora, ReproductorService reproductor,
-               AtajoService atajos, PreferenciasRepository preferencias) {
-        super(new GridBagLayout());
-        this.titulo = titulo;
-        this.grabadora = grabadora;
-        this.reproductor = reproductor;
+    PanelMacro(ModoGrabacion modo, AtajoService atajos, PreferenciasRepository preferencias) {
+        this.titulo = modo.titulo();
+        this.grabadora = modo.grabadora();
+        this.reproductor = modo.reproductor();
         this.atajos = atajos;
-        setOpaque(false);
 
-        atajoGrabar = new AtajoConfigurable(prefijoAtajos + ".grabar", atajoGrabarPredeterminado,
+        atajoGrabar = new AtajoConfigurable(modo.prefijoAtajos() + ".grabar", modo.atajoGrabar(),
                 () -> alternarGrabacion(false), atajos, preferencias);
-        atajoReproducir = new AtajoConfigurable(prefijoAtajos + ".reproducir", atajoReproducirPredeterminado,
+        atajoReproducir = new AtajoConfigurable(modo.prefijoAtajos() + ".reproducir", modo.atajoReproducir(),
                 this::alternarReproduccion, atajos, preferencias);
         AtajoConfigurable.sonHermanos(atajoGrabar, atajoReproducir);
         atajoGrabar.setAlCambiar(this::actualizarControles);
@@ -71,7 +62,7 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
         reproductor.setListener(this);
 
         Diseno.Pila pila = new Diseno.Pila(this);
-        pila.agregar(Diseno.tarjeta("Grabación", resumen, descripcion), 0);
+        pila.agregar(Diseno.tarjeta("Grabación", resumen, modo.descripcion()), 0);
         pila.agregar(Diseno.tarjeta("Repeticiones", repeticionesCampo, "0 = repetir hasta detener"), 12);
         pila.agregar(Diseno.dosColumnas(
                 Diseno.tarjeta("Grabar / detener", atajoGrabar.selector(), null),
@@ -91,15 +82,9 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
     // ---- ModoPanel ----
 
     @Override public String titulo() { return titulo; }
-    @Override public JComponent vista() { return this; }
     @Override public List<String> clavesAtajo() { return List.of(atajoGrabar.clave(), atajoReproducir.clave()); }
     /** Los servicios son la única fuente de verdad: aquí no se guarda una copia del estado. */
     @Override public boolean estaOcupado() { return grabadora.estaGrabando() || reproductor.estaCorriendo(); }
-
-    @Override
-    public void setAlCambiarOcupado(Runnable accion) {
-        this.alCambiarOcupado = (accion != null) ? accion : () -> { };
-    }
 
     @Override
     public void detenerTodo() {
@@ -199,7 +184,7 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
         repeticionesCampo.setEnabled(libre);
         atajoGrabar.setEnabled(libre);
         atajoReproducir.setEnabled(libre);
-        alCambiarOcupado.run();
+        avisarCambioDeOcupado();
     }
 
     private String describir(Grabacion g) {

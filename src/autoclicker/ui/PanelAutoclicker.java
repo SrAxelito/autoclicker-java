@@ -11,14 +11,15 @@ import autoclicker.ui.componentes.CampoNumerico;
 import autoclicker.ui.componentes.ControlSegmentado;
 import autoclicker.ui.componentes.IndicadorEstado;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import java.util.List;
 
 /**
  * Pestaña del autoclicker: clics repetidos en la posición actual del mouse.
  */
-class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
+class PanelAutoclicker extends PanelModo implements EstadoListener {
 
     private static final String CLAVE_ATAJO = "atajo"; // se mantiene la clave de versiones anteriores
     private static final int REFRESCO_PROGRESO_MS = 100;
@@ -26,7 +27,6 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     private final ClickerService servicio;
     private final AtajoService atajos;
     private final AtajoConfigurable atajo;
-    private Runnable alCambiarOcupado = () -> { };
 
     private final CampoNumerico intervaloCampo = new CampoNumerico(100, 1, 600_000, 10, "ms");
     private final CampoNumerico esperaCampo    = new CampoNumerico(3, 0, 60, 1, "s");
@@ -42,12 +42,10 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     private final Timer relojProgreso = new Timer(REFRESCO_PROGRESO_MS, e -> mostrarProgreso());
 
     PanelAutoclicker(ClickerService servicio, AtajoService atajos, PreferenciasRepository preferencias) {
-        super(new GridBagLayout());
         this.servicio = servicio;
         this.atajos = atajos;
         this.atajo = new AtajoConfigurable(CLAVE_ATAJO, AtajoService.F6, this::alternar, atajos, preferencias);
         atajo.setAlCambiar(this::mostrarAtajo);
-        setOpaque(false);
 
         Diseno.Pila pila = new Diseno.Pila(this);
         pila.agregar(Diseno.dosColumnas(
@@ -72,15 +70,9 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     // ---- ModoPanel ----
 
     @Override public String titulo() { return "Autoclicker"; }
-    @Override public JComponent vista() { return this; }
     @Override public List<String> clavesAtajo() { return List.of(atajo.clave()); }
     /** El servicio es la única fuente de verdad: aquí no se guarda una copia del estado. */
     @Override public boolean estaOcupado() { return servicio.estaCorriendo(); }
-
-    @Override
-    public void setAlCambiarOcupado(Runnable accion) {
-        this.alCambiarOcupado = (accion != null) ? accion : () -> { };
-    }
 
     @Override
     public void detenerTodo() {
@@ -174,6 +166,6 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
         botonControl.setEnabled(libre);
         tipoControl.setEnabled(libre);
         atajo.setEnabled(libre);
-        alCambiarOcupado.run();
+        avisarCambioDeOcupado();
     }
 }
