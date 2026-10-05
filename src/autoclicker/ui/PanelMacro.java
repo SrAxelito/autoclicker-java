@@ -71,15 +71,16 @@ class PanelMacro extends PanelModo implements EstadoListener {
         atajos.agregarOyente(grabadora);
         reproductor.setListener(this);
 
-        Diseno.Pila pila = new Diseno.Pila(this);
-        pila.agregar(Diseno.tarjeta("Grabación", resumen, modo.descripcion()), 0);
-        pila.agregar(Diseno.tarjeta("Repeticiones", repeticionesCampo, "0 = repetir hasta detener"), 12);
-        pila.agregar(Diseno.dosColumnas(
+        Diseno.Pila opciones = pilaDeOpciones();
+        opciones.agregar(Diseno.tarjeta("Grabación", resumen, modo.descripcion()), 0);
+        opciones.agregar(Diseno.tarjeta("Repeticiones", repeticionesCampo, "0 = repetir hasta detener"), 12);
+        opciones.agregar(Diseno.dosColumnas(
                 Diseno.tarjeta("Grabar / detener", atajoGrabar.selector(), null),
                 Diseno.tarjeta("Reproducir / detener", atajoReproducir.selector(), null)), 12);
-        pila.agregarRelleno();
-        pila.agregar(estado, 18);
-        pila.agregar(Diseno.dosColumnas(grabarBtn, reproducirBtn), 12);
+
+        Diseno.Pila pie = pilaDelPie();
+        pie.agregar(estado, 28);
+        pie.agregar(Diseno.dosColumnas(grabarBtn, reproducirBtn), 12);
 
         grabarBtn.addActionListener(e -> alternarGrabacion(true));
         reproducirBtn.addActionListener(e -> alternarReproduccion());
