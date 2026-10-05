@@ -36,7 +36,6 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
     private Runnable alCambiarOcupado = () -> { };
 
     private Grabacion grabacion = Grabacion.VACIA;
-    private boolean reproduciendo = false;
 
     private final Etiqueta resumen = new Etiqueta("Todavía no hay nada grabado",
             Etiqueta.Rol.TEXTO, Tema.fuente(Font.BOLD, 15f));
@@ -94,7 +93,8 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
     @Override public String titulo() { return titulo; }
     @Override public JComponent vista() { return this; }
     @Override public List<String> clavesAtajo() { return List.of(atajoGrabar.clave(), atajoReproducir.clave()); }
-    @Override public boolean estaOcupado() { return grabadora.estaGrabando() || reproduciendo; }
+    /** Los servicios son la única fuente de verdad: aquí no se guarda una copia del estado. */
+    @Override public boolean estaOcupado() { return grabadora.estaGrabando() || reproductor.estaCorriendo(); }
 
     @Override
     public void setAlCambiarOcupado(Runnable accion) {
@@ -114,7 +114,7 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
      *                       no debe quedar dentro de la grabación
      */
     private void alternarGrabacion(boolean desdeLaVentana) {
-        if (reproduciendo) return;
+        if (reproductor.estaCorriendo()) return;
         if (atajos.estaCapturando()) atajos.cancelarCaptura();
 
         if (grabadora.estaGrabando()) {
@@ -144,16 +144,16 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
 
     private void alternarReproduccion() {
         if (grabadora.estaGrabando()) return;
-        if (reproduciendo) {
+        if (reproductor.estaCorriendo()) {
             reproductor.detener();
             return;
         }
         if (grabacion.estaVacia()) return;
         if (atajos.estaCapturando()) atajos.cancelarCaptura();
 
-        reproduciendo = true;
+        // Si no se inició no habrá aviso de final: la interfaz se deja como está.
+        if (!reproductor.iniciar(grabacion, repeticionesCampo.getValor())) return;
         atajos.setTolerarModificadores(true);
-        reproductor.iniciar(grabacion, repeticionesCampo.getValor());
         actualizarControles();
     }
 
@@ -167,9 +167,14 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
     @Override
     public void alTerminar(String mensajeFinal) {
         SwingUtilities.invokeLater(() -> {
-            reproduciendo = false;
+            // Aviso atrasado de la reproducción anterior: ya se inició otra y la
+            // interfaz la está mostrando, así que este final no debe desbloquear nada.
+            if (reproductor.estaCorriendo()) return;
             atajos.setTolerarModificadores(false);
-            estado.setEstado(mensajeFinal, IndicadorEstado.Tono.INACTIVO);
+            // Si en ese instante ya se empezó a grabar, el estado de grabación manda.
+            if (!grabadora.estaGrabando()) {
+                estado.setEstado(mensajeFinal, IndicadorEstado.Tono.INACTIVO);
+            }
             actualizarControles();
         });
     }
@@ -178,6 +183,7 @@ class PanelMacro extends JPanel implements ModoPanel, EstadoListener {
 
     private void actualizarControles() {
         boolean grabando = grabadora.estaGrabando();
+        boolean reproduciendo = reproductor.estaCorriendo();
         boolean conAtajos = atajos.estaDisponible();
         String g = conAtajos ? "  ·  " + atajoGrabar.nombre() : "";
         String r = conAtajos ? "  ·  " + atajoReproducir.nombre() : "";
