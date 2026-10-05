@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Compila AutoClicker en macOS o Linux.
-# Uso: ./construir.sh [version]      Ejemplo: ./construir.sh 1.5.0
+# Uso: ./construir.sh [version]      Ejemplo: ./construir.sh 1.6.0
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="${1:-1.5.0}"
-JNH="lib/jnativehook-2.2.2.jar"
+VERSION="${1:-1.6.0}"
+JNH="jnativehook-2.2.2.jar"
 NOMBRE="AutoClicker-$VERSION"
 ARQUITECTURA="$(uname -m)"
 case "$ARQUITECTURA" in
@@ -15,18 +15,23 @@ esac
 
 echo "Limpiando versiones anteriores..."
 rm -rf build dist
-mkdir -p build/clases build/jar build/app dist
+mkdir -p build/clases build/app build/portable dist
 
 echo "Compilando..."
-javac --release 21 -encoding UTF-8 -cp "$JNH" -d build/clases -sourcepath src src/autoclicker/Main.java
+javac --release 21 -encoding UTF-8 -cp "lib/$JNH" -d build/clases -sourcepath src src/autoclicker/Main.java
 
-echo "Armando el .jar portable (incluye JNativeHook)..."
-(cd build/jar && jar xf "../../$JNH")
-rm -f build/jar/META-INF/MANIFEST.MF
-cp -R build/clases/autoclicker build/jar/
-printf 'Main-Class: autoclicker.Main\nMulti-Release: true\n' > build/MANIFEST.MF
-jar cfm "dist/$NOMBRE-portable.jar" build/MANIFEST.MF -C build/jar .
-cp "dist/$NOMBRE-portable.jar" build/app/AutoClicker.jar
+# JNativeHook (LGPL) va como archivo aparte, sin mezclarlo con el código de
+# AutoClicker, para que cualquiera pueda reemplazarlo. Class-Path le dice a
+# Java que lo busque junto a AutoClicker.jar.
+echo "Armando AutoClicker.jar..."
+printf 'Main-Class: autoclicker.Main\nClass-Path: %s\n' "$JNH" > build/MANIFEST.MF
+jar cfm build/app/AutoClicker.jar build/MANIFEST.MF -C build/clases .
+cp "lib/$JNH" LICENSE build/app/
+cp -R licencias build/app/
+
+echo "Armando la versión portable..."
+cp -R build/app "build/portable/$NOMBRE-portable"
+jar cMf "dist/$NOMBRE-portable.zip" -C build/portable "$NOMBRE-portable"
 
 COMUNES=(--type app-image --input build/app --main-jar AutoClicker.jar --main-class autoclicker.Main
          --name AutoClicker --app-version "$VERSION" --vendor "AutoClicker Java"
@@ -50,4 +55,4 @@ fi
 echo
 echo "Listo. En la carpeta dist:"
 echo "  $PAQUETE"
-echo "  $NOMBRE-portable.jar   (cualquier sistema con Java 21 o superior)"
+echo "  $NOMBRE-portable.zip   (descomprimir y abrir AutoClicker.jar; necesita Java 21 o superior)"
