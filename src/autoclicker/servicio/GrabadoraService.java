@@ -22,6 +22,11 @@ import java.util.*;
  * La posición del mouse se lee con MouseInfo (y no con las coordenadas de
  * JNativeHook) porque así usa el mismo sistema de coordenadas que Robot,
  * incluso con la escala de pantalla de Windows al 125 % o 150 %.
+ *
+ * La hora de cada clic o tecla es la del instante en que el evento llegó del
+ * sistema (viene en cada aviso de {@link EntradaListener}), no la del momento
+ * en que el hilo de Swing lo atendió: así un hilo de Swing ocupado no altera
+ * los tiempos.
  */
 public class GrabadoraService implements EntradaListener {
 
@@ -112,42 +117,52 @@ public class GrabadoraService implements EntradaListener {
     }
 
     @Override
-    public void teclaPresionada(NativeKeyEvent e) {
+    public void teclaPresionada(NativeKeyEvent e, long instanteNs) {
         if (!grabando || !tipo.incluyeTeclado()) return;
+        long momento = momento(instanteNs);
+        if (momento < 0) return;   // ocurrió antes de empezar a grabar
         int codigo = conversor.codigoJava(e);
-        if (codigo != KeyEvent.VK_UNDEFINED) agregar(new PresionTecla(ahora(), codigo));
+        if (codigo != KeyEvent.VK_UNDEFINED) agregar(new PresionTecla(momento, codigo));
     }
 
     @Override
-    public void teclaSoltada(NativeKeyEvent e) {
+    public void teclaSoltada(NativeKeyEvent e, long instanteNs) {
         if (!grabando || !tipo.incluyeTeclado()) return;
+        long momento = momento(instanteNs);
+        if (momento < 0) return;
         int codigo = conversor.codigoJava(e);
-        if (codigo != KeyEvent.VK_UNDEFINED) agregar(new SueltaTecla(ahora(), codigo));
+        if (codigo != KeyEvent.VK_UNDEFINED) agregar(new SueltaTecla(momento, codigo));
     }
 
     @Override
-    public void botonPresionado(NativeMouseEvent e) {
+    public void botonPresionado(NativeMouseEvent e, long instanteNs) {
         if (!grabando || !tipo.incluyeMouse()) return;
+        long momento = momento(instanteNs);
+        if (momento < 0) return;
         int boton = botonJava(e.getButton());
         if (boton == 0) return;
         Point p = posicionOEvento(e);
-        agregar(new PresionBoton(ahora(), boton, p.x, p.y));
+        agregar(new PresionBoton(momento, boton, p.x, p.y));
     }
 
     @Override
-    public void botonSoltado(NativeMouseEvent e) {
+    public void botonSoltado(NativeMouseEvent e, long instanteNs) {
         if (!grabando || !tipo.incluyeMouse()) return;
+        long momento = momento(instanteNs);
+        if (momento < 0) return;
         int boton = botonJava(e.getButton());
         if (boton == 0) return;
         Point p = posicionOEvento(e);
-        agregar(new SueltaBoton(ahora(), boton, p.x, p.y));
+        agregar(new SueltaBoton(momento, boton, p.x, p.y));
     }
 
     @Override
-    public void ruedaMovida(NativeMouseWheelEvent e) {
+    public void ruedaMovida(NativeMouseWheelEvent e, long instanteNs) {
         if (!grabando || !tipo.incluyeMouse()) return;
+        long momento = momento(instanteNs);
+        if (momento < 0) return;
         if (e.getWheelDirection() == NativeMouseWheelEvent.WHEEL_HORIZONTAL_DIRECTION) return;
-        if (e.getWheelRotation() != 0) agregar(new RuedaMouse(ahora(), e.getWheelRotation()));
+        if (e.getWheelRotation() != 0) agregar(new RuedaMouse(momento, e.getWheelRotation()));
     }
 
     private synchronized void agregar(EventoMacro evento) {
@@ -206,6 +221,14 @@ public class GrabadoraService implements EntradaListener {
 
     private long ahora() {
         return (System.nanoTime() - inicioNanos) / 1_000_000L;
+    }
+
+    /**
+     * Milisegundos entre el inicio de la grabación y el instante dado
+     * (System.nanoTime). Es negativo si el instante es anterior al inicio.
+     */
+    private long momento(long instanteNs) {
+        return Math.floorDiv(instanteNs - inicioNanos, 1_000_000L);
     }
 
     private static Point posicionMouse() {
