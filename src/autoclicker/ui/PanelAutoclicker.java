@@ -27,7 +27,6 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     private final AtajoService atajos;
     private final AtajoConfigurable atajo;
     private Runnable alCambiarOcupado = () -> { };
-    private boolean ocupado = false;   // solo se toca desde el hilo de Swing
 
     private final CampoNumerico intervaloCampo = new CampoNumerico(100, 1, 600_000, 10, "ms");
     private final CampoNumerico esperaCampo    = new CampoNumerico(3, 0, 60, 1, "s");
@@ -75,7 +74,8 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     @Override public String titulo() { return "Autoclicker"; }
     @Override public JComponent vista() { return this; }
     @Override public List<String> clavesAtajo() { return List.of(atajo.clave()); }
-    @Override public boolean estaOcupado() { return ocupado; }
+    /** El servicio es la única fuente de verdad: aquí no se guarda una copia del estado. */
+    @Override public boolean estaOcupado() { return servicio.estaCorriendo(); }
 
     @Override
     public void setAlCambiarOcupado(Runnable accion) {
@@ -98,20 +98,24 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
                     esperaCampo.getValor(),
                     botonControl.getSeleccion(),
                     tipoControl.getSeleccion());
-            // Si el hilo anterior aún termina, no se inició nada: no se bloquea la interfaz,
-            // porque nadie la desbloquearía después.
+            // Si ya había una sesión en marcha no se inició nada y no habrá aviso de
+            // final: la interfaz se deja como está.
             if (!servicio.iniciar(config)) return;
             relojProgreso.start();
-            habilitarControles(false);
+            actualizarControles();
         } catch (IllegalArgumentException | NullPointerException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Configuración inválida", JOptionPane.WARNING_MESSAGE);
         }
     }
 
-    /** Lo que hace el atajo: detener si está trabajando, iniciar si está quieto. */
+    /**
+     * Lo que hace el atajo: detener si está trabajando, iniciar si está quieto.
+     * Se pregunta al servicio y no a la interfaz, porque la interfaz se entera
+     * del final un momento después (el aviso llega con invokeLater).
+     */
     private void alternar() {
-        if (ocupado) {
+        if (servicio.estaCorriendo()) {
             servicio.detener();
         } else {
             iniciar();
@@ -150,22 +154,26 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     @Override
     public void alTerminar(String mensajeFinal) {
         SwingUtilities.invokeLater(() -> {
+            // Aviso atrasado de la sesión anterior: ya se inició otra y la interfaz
+            // la está mostrando, así que este final no debe desbloquear nada.
+            if (servicio.estaCorriendo()) return;
             relojProgreso.stop();
             estado.setEstado(mensajeFinal, IndicadorEstado.Tono.INACTIVO);
-            habilitarControles(true);
+            actualizarControles();
         });
     }
 
-    private void habilitarControles(boolean habilitar) {
-        ocupado = !habilitar;
-        iniciarBtn.setEnabled(habilitar);
-        detenerBtn.setEnabled(!habilitar);
-        intervaloCampo.setEnabled(habilitar);
-        esperaCampo.setEnabled(habilitar);
-        clicsCampo.setEnabled(habilitar);
-        botonControl.setEnabled(habilitar);
-        tipoControl.setEnabled(habilitar);
-        atajo.setEnabled(habilitar);
+    /** Pone los controles según el estado del servicio. Se llama desde el hilo de Swing. */
+    private void actualizarControles() {
+        boolean libre = !servicio.estaCorriendo();
+        iniciarBtn.setEnabled(libre);
+        detenerBtn.setEnabled(!libre);
+        intervaloCampo.setEnabled(libre);
+        esperaCampo.setEnabled(libre);
+        clicsCampo.setEnabled(libre);
+        botonControl.setEnabled(libre);
+        tipoControl.setEnabled(libre);
+        atajo.setEnabled(libre);
         alCambiarOcupado.run();
     }
 }
