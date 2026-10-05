@@ -25,4 +25,7 @@ interface ModoPanel {
 
     /** Detiene todo lo que esté en marcha (al cerrar la ventana). */
     void detenerTodo();
+
+    /** Guarda los parámetros que el usuario eligió para encontrarlos igual la próxima vez. */
+    void guardarParametros();
 }

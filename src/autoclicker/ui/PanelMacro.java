@@ -22,6 +22,8 @@ import java.util.Locale;
  * Pestaña de grabación: graba lo que hace el usuario y lo reproduce
  * las veces indicadas. Es la misma clase para "Mouse", "Teclado" y
  * "Mouse + Teclado"; lo que cambia entre ellas viene en el {@link ModoGrabacion}.
+ * Las repeticiones se guardan al reproducir y al cerrar la ventana; la
+ * grabación en sí no se guarda y se pierde al cerrar el programa.
  */
 class PanelMacro extends PanelModo implements EstadoListener {
 
@@ -31,6 +33,8 @@ class PanelMacro extends PanelModo implements EstadoListener {
     private final GrabadoraService grabadora;
     private final ReproductorService reproductor;
     private final AtajoService atajos;
+    private final PreferenciasRepository preferencias;
+    private final String claveRepeticiones;
     private final AtajoConfigurable atajoGrabar;
     private final AtajoConfigurable atajoReproducir;
 
@@ -38,6 +42,7 @@ class PanelMacro extends PanelModo implements EstadoListener {
 
     private final Etiqueta resumen = new Etiqueta("Todavía no hay nada grabado",
             Etiqueta.Rol.TEXTO, Tema.fuente(Font.BOLD, 15f));
+    // El valor con el que nace el campo es el predeterminado de la primera vez
     private final CampoNumerico repeticionesCampo = new CampoNumerico(1, 0, 1_000_000, 1, "veces");
     private final IndicadorEstado estado = new IndicadorEstado();
     private final BotonModerno grabarBtn = new BotonModerno("Grabar", BotonModerno.Variante.PELIGRO);
@@ -49,6 +54,8 @@ class PanelMacro extends PanelModo implements EstadoListener {
         this.grabadora = modo.grabadora();
         this.reproductor = modo.reproductor();
         this.atajos = atajos;
+        this.preferencias = preferencias;
+        this.claveRepeticiones = modo.claveRepeticiones();
 
         atajoGrabar = new AtajoConfigurable(modo.prefijoAtajos() + ".grabar", modo.atajoGrabar(),
                 () -> alternarGrabacion(false), atajos, preferencias);
@@ -57,6 +64,9 @@ class PanelMacro extends PanelModo implements EstadoListener {
         AtajoConfigurable.sonHermanos(atajoGrabar, atajoReproducir);
         atajoGrabar.setAlCambiar(this::actualizarControles);
         atajoReproducir.setAlCambiar(this::actualizarControles);
+
+        repeticionesCampo.setValor(
+                preferencias.cargarRepeticiones(claveRepeticiones, repeticionesCampo.getValor()));
 
         atajos.agregarOyente(grabadora);
         reproductor.setListener(this);
@@ -90,6 +100,11 @@ class PanelMacro extends PanelModo implements EstadoListener {
     public void detenerTodo() {
         if (grabadora.estaGrabando()) grabadora.detener(false);
         reproductor.detener();
+    }
+
+    @Override
+    public void guardarParametros() {
+        preferencias.guardarRepeticiones(claveRepeticiones, repeticionesCampo.getValor());
     }
 
     // ---- Grabar ----
@@ -137,9 +152,12 @@ class PanelMacro extends PanelModo implements EstadoListener {
         if (atajos.estaCapturando()) atajos.cancelarCaptura();
 
         // Si no se inició no habrá aviso de final: la interfaz se deja como está.
-        if (!reproductor.iniciar(grabacion, repeticionesCampo.getValor())) return;
+        int repeticiones = repeticionesCampo.getValor();
+        if (!reproductor.iniciar(grabacion, repeticiones)) return;
         atajos.setTolerarModificadores(true);
         actualizarControles();
+        // Se guarda aquí además de al cerrar, por si el programa no se cierra con la X.
+        preferencias.guardarRepeticiones(claveRepeticiones, repeticiones);
     }
 
     // ---- EstadoListener (llegan desde el hilo de reproducción) ----

@@ -85,9 +85,21 @@ public class VentanaPrincipal extends JFrame {
             }
             @Override public void windowClosing(WindowEvent e) {
                 modos.forEach(ModoPanel::detenerTodo);
+                guardarParametros();
                 atajos.cerrar();
             }
         });
+    }
+
+    /** Guardar es un extra: si falla, la ventana se cierra igual. */
+    private void guardarParametros() {
+        for (ModoPanel modo : modos) {
+            try {
+                modo.guardarParametros();
+            } catch (RuntimeException ignored) {
+                // La próxima vez esa pestaña abrirá con lo último que sí se guardó.
+            }
+        }
     }
 
     // ---- Modos ----
