@@ -1,12 +1,12 @@
 @echo off
 setlocal
-rem Uso: construir.bat [version]      Ejemplo: construir.bat 1.6.0
+rem Uso: construir.bat [version]      Ejemplo: construir.bat 1.6.1
 
 rem Trabaja siempre desde la carpeta de este archivo, se ejecute desde donde se ejecute.
 cd /d "%~dp0"
 
 set VERSION=%~1
-if "%VERSION%"=="" set VERSION=1.6.0
+if "%VERSION%"=="" set VERSION=1.6.1
 set JNH=jnativehook-2.2.2.jar
 set NOMBRE=AutoClicker-%VERSION%
 

@@ -27,6 +27,7 @@ En los modos de grabación se elige cuántas veces repetir (0 = hasta detener). 
 - Atajos globales configurables con cualquier tecla, combinación con Ctrl/Alt/Shift o botón lateral del mouse
 - Opciones con selección de tema claro u oscuro
 - Los atajos, el tema y los parámetros de cada pestaña se recuerdan entre ejecuciones
+- La ventana se puede cambiar de tamaño y se ajusta sola a pantallas pequeñas: si las opciones no caben, se desplazan, y el estado y los botones quedan siempre a la vista
 
 ## Descargar y usar
 
@@ -116,6 +117,7 @@ src/autoclicker/
         ├── Etiqueta.java             Texto que sigue el tema
         ├── IndicadorEstado.java      Barra de estado animada
         ├── Logo.java                 Logo e icono de la ventana
+        ├── PanelDesplazable.java     Zona que se desplaza cuando su contenido no cabe
         ├── PanelFondo.java           Fondo que sigue el tema
         ├── PanelTarjeta.java         Tarjeta con título
         └── SelectorAtajo.java        Captura y muestra un atajo
@@ -142,7 +144,7 @@ Requisitos: JDK 21 o superior con `javac`, `jar` y `jpackage` en el PATH.
 | Windows | `construir.bat` (o doble clic) |
 | macOS / Linux | `./construir.sh` |
 
-Se puede indicar la versión: `construir.bat 1.6.0` o `./construir.sh 1.6.0`. El resultado queda en `dist/`, y la aplicación sin comprimir en `build/salida/` para probarla. `jpackage` solo genera la aplicación del sistema en el que se ejecuta.
+Se puede indicar la versión: `construir.bat 1.6.1` o `./construir.sh 1.6.1`. El resultado queda en `dist/`, y la aplicación sin comprimir en `build/salida/` para probarla. `jpackage` solo genera la aplicación del sistema en el que se ejecuta.
 
 ## Pruebas
 
@@ -160,8 +162,8 @@ El workflow `.github/workflows/compilar.yml` ejecuta las pruebas y compila en Wi
 ```
 git checkout main
 git pull
-git tag -a v1.6.0 -m "Versión 1.6.0"
-git push origin v1.6.0
+git tag -a v1.6.1 -m "Versión 1.6.1"
+git push origin v1.6.1
 ```
 
 ## Licencia
