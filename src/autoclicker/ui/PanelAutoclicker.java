@@ -11,22 +11,27 @@ import autoclicker.ui.componentes.CampoNumerico;
 import autoclicker.ui.componentes.ControlSegmentado;
 import autoclicker.ui.componentes.IndicadorEstado;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import java.util.List;
 
 /**
  * Pestaña del autoclicker: clics repetidos en la posición actual del mouse.
+ * Los parámetros se guardan al iniciar y al cerrar la ventana, y se
+ * recuperan al abrir el programa.
  */
-class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
+class PanelAutoclicker extends PanelModo implements EstadoListener {
 
     private static final String CLAVE_ATAJO = "atajo"; // se mantiene la clave de versiones anteriores
+    private static final int REFRESCO_PROGRESO_MS = 100;
 
     private final ClickerService servicio;
     private final AtajoService atajos;
+    private final PreferenciasRepository preferencias;
     private final AtajoConfigurable atajo;
-    private Runnable alCambiarOcupado = () -> { };
 
+    // Los valores con los que nacen los campos son los predeterminados de la primera vez
     private final CampoNumerico intervaloCampo = new CampoNumerico(100, 1, 600_000, 10, "ms");
     private final CampoNumerico esperaCampo    = new CampoNumerico(3, 0, 60, 1, "s");
     private final CampoNumerico clicsCampo     = new CampoNumerico(0, 0, 10_000_000, 1, "clics");
@@ -38,14 +43,15 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     private final BotonModerno iniciarBtn = new BotonModerno("Iniciar", BotonModerno.Variante.PRIMARIO);
     private final BotonModerno detenerBtn = new BotonModerno("Detener", BotonModerno.Variante.PELIGRO);
     private final IndicadorEstado estado = new IndicadorEstado();
+    private final Timer relojProgreso = new Timer(REFRESCO_PROGRESO_MS, e -> mostrarProgreso());
 
     PanelAutoclicker(ClickerService servicio, AtajoService atajos, PreferenciasRepository preferencias) {
-        super(new GridBagLayout());
         this.servicio = servicio;
         this.atajos = atajos;
+        this.preferencias = preferencias;
         this.atajo = new AtajoConfigurable(CLAVE_ATAJO, AtajoService.F6, this::alternar, atajos, preferencias);
         atajo.setAlCambiar(this::mostrarAtajo);
-        setOpaque(false);
+        mostrarConfiguracion(preferencias.cargarConfiguracionClics(leerConfiguracion()));
 
         Diseno.Pila pila = new Diseno.Pila(this);
         pila.agregar(Diseno.dosColumnas(
@@ -70,18 +76,39 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     // ---- ModoPanel ----
 
     @Override public String titulo() { return "Autoclicker"; }
-    @Override public JComponent vista() { return this; }
     @Override public List<String> clavesAtajo() { return List.of(atajo.clave()); }
-    @Override public boolean estaOcupado() { return detenerBtn.isEnabled(); }
-
-    @Override
-    public void setAlCambiarOcupado(Runnable accion) {
-        this.alCambiarOcupado = (accion != null) ? accion : () -> { };
-    }
+    /** El servicio es la única fuente de verdad: aquí no se guarda una copia del estado. */
+    @Override public boolean estaOcupado() { return servicio.estaCorriendo(); }
 
     @Override
     public void detenerTodo() {
         servicio.detener();
+    }
+
+    @Override
+    public void guardarParametros() {
+        preferencias.guardarConfiguracionClics(leerConfiguracion());
+    }
+
+    // ---- Parámetros ----
+
+    /** Arma la configuración con lo que hay ahora mismo en los campos. */
+    private ConfiguracionClics leerConfiguracion() {
+        return new ConfiguracionClics(
+                intervaloCampo.getValor(),
+                clicsCampo.getValor(),
+                esperaCampo.getValor(),
+                botonControl.getSeleccion(),
+                tipoControl.getSeleccion());
+    }
+
+    /** Pone una configuración en los campos; cada campo ajusta el valor a sus propios límites. */
+    private void mostrarConfiguracion(ConfiguracionClics config) {
+        intervaloCampo.setValor((int) Math.min(config.intervaloMs(), Integer.MAX_VALUE));
+        clicsCampo.setValor(config.maxClics());
+        esperaCampo.setValor(config.esperaSegundos());
+        botonControl.setSeleccion(config.boton());
+        tipoControl.setSeleccion(config.dobleClic());
     }
 
     // ---- Acciones ----
@@ -89,39 +116,52 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     private void iniciar() {
         if (atajos.estaCapturando()) atajos.cancelarCaptura();
         try {
-            ConfiguracionClics config = new ConfiguracionClics(
-                    intervaloCampo.getValor(),
-                    clicsCampo.getValor(),
-                    esperaCampo.getValor(),
-                    botonControl.getSeleccion(),
-                    tipoControl.getSeleccion());
-            habilitarControles(false);
-            servicio.iniciar(config);
+            ConfiguracionClics config = leerConfiguracion();
+            // Si ya había una sesión en marcha no se inició nada y no habrá aviso de
+            // final: la interfaz se deja como está.
+            if (!servicio.iniciar(config)) return;
+            relojProgreso.start();
+            actualizarControles();
+            // Se guarda aquí además de al cerrar, por si el programa no se cierra con la X.
+            preferencias.guardarConfiguracionClics(config);
         } catch (IllegalArgumentException | NullPointerException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Configuración inválida", JOptionPane.WARNING_MESSAGE);
         }
     }
 
-    /** Lo que hace el atajo: detener si está trabajando, iniciar si está quieto. */
+    /**
+     * Lo que hace el atajo: detener si está trabajando, iniciar si está quieto.
+     * Se pregunta al servicio y no a la interfaz, porque la interfaz se entera
+     * del final un momento después (el aviso llega con invokeLater).
+     */
     private void alternar() {
-        if (detenerBtn.isEnabled()) {
+        if (servicio.estaCorriendo()) {
             servicio.detener();
-        } else if (iniciarBtn.isEnabled()) {
+        } else {
             iniciar();
         }
     }
 
     private String notaAtajo() {
-        return atajos.estaDisponible()
-                ? "Funciona aunque la ventana no esté activa"
-                : "No se pudo activar la escucha global del teclado";
+        if (atajos.estaDisponible()) return "Funciona aunque la ventana no esté activa";
+        return atajos.fallo()
+                .map(AtajoService.FalloEscucha::resumen)
+                .orElse("No se pudo activar la escucha global del teclado");
     }
 
     private void mostrarAtajo() {
         if (atajos.estaDisponible()) {
             iniciarBtn.setTextos("Iniciar  ·  " + atajo.nombre(), "Iniciar");
             detenerBtn.setTextos("Detener  ·  " + atajo.nombre(), "Detener");
+        }
+    }
+
+    /** Se ejecuta en el hilo de Swing: lee el contador del servicio en lugar de recibir un aviso por clic. */
+    private void mostrarProgreso() {
+        int hechos = servicio.clicsHechos();
+        if (hechos > 0 && servicio.estaCorriendo()) {
+            estado.setEstado("Clicando... " + hechos + " clics", IndicadorEstado.Tono.ACTIVO);
         }
     }
 
@@ -135,20 +175,26 @@ class PanelAutoclicker extends JPanel implements ModoPanel, EstadoListener {
     @Override
     public void alTerminar(String mensajeFinal) {
         SwingUtilities.invokeLater(() -> {
+            // Aviso atrasado de la sesión anterior: ya se inició otra y la interfaz
+            // la está mostrando, así que este final no debe desbloquear nada.
+            if (servicio.estaCorriendo()) return;
+            relojProgreso.stop();
             estado.setEstado(mensajeFinal, IndicadorEstado.Tono.INACTIVO);
-            habilitarControles(true);
+            actualizarControles();
         });
     }
 
-    private void habilitarControles(boolean habilitar) {
-        iniciarBtn.setEnabled(habilitar);
-        detenerBtn.setEnabled(!habilitar);
-        intervaloCampo.setEnabled(habilitar);
-        esperaCampo.setEnabled(habilitar);
-        clicsCampo.setEnabled(habilitar);
-        botonControl.setEnabled(habilitar);
-        tipoControl.setEnabled(habilitar);
-        atajo.setEnabled(habilitar);
-        alCambiarOcupado.run();
+    /** Pone los controles según el estado del servicio. Se llama desde el hilo de Swing. */
+    private void actualizarControles() {
+        boolean libre = !servicio.estaCorriendo();
+        iniciarBtn.setEnabled(libre);
+        detenerBtn.setEnabled(!libre);
+        intervaloCampo.setEnabled(libre);
+        esperaCampo.setEnabled(libre);
+        clicsCampo.setEnabled(libre);
+        botonControl.setEnabled(libre);
+        tipoControl.setEnabled(libre);
+        atajo.setEnabled(libre);
+        avisarCambioDeOcupado();
     }
 }

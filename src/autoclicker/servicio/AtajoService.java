@@ -4,7 +4,6 @@ import autoclicker.modelo.Atajo;
 import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;
 import com.github.kwhat.jnativehook.NativeInputEvent;
-import com.github.kwhat.jnativehook.dispatcher.SwingDispatchService;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
 import com.github.kwhat.jnativehook.mouse.NativeMouseEvent;
@@ -12,13 +11,17 @@ import com.github.kwhat.jnativehook.mouse.NativeMouseListener;
 import com.github.kwhat.jnativehook.mouse.NativeMouseWheelEvent;
 import com.github.kwhat.jnativehook.mouse.NativeMouseWheelListener;
 
+import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,7 +33,8 @@ import java.util.logging.Logger;
  *   <li>capturar un atajo nuevo cuando el usuario lo está cambiando,</li>
  *   <li>entregar el resto de pulsaciones a los oyentes (la grabadora).</li>
  * </ul>
- * Todos los eventos llegan al hilo de Swing gracias a SwingDispatchService.
+ * Todos los eventos se atienden en el hilo de Swing, pero cada uno conserva
+ * el instante en que llegó del sistema (ver {@link DespachoConHora}).
  */
 public class AtajoService implements NativeKeyListener, NativeMouseListener, NativeMouseWheelListener {
 
@@ -42,18 +46,49 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
     public static final Atajo F11 = tecla(NativeKeyEvent.VC_F11);
     public static final Atajo F12 = tecla(NativeKeyEvent.VC_F12);
 
+    /**
+     * Al mantener una tecla, el sistema repite el aviso de "presionada" cada
+     * pocos milisegundos (como mucho uno o dos segundos entre el primero y el
+     * segundo). Si entre dos avisos pasa más que esto, el segundo no es una
+     * repetición: es una pulsación nueva cuyo "soltar" anterior se perdió.
+     */
+    private static final long CADUCIDAD_PULSACION_NS = TimeUnit.SECONDS.toNanos(3);
+
     private final Map<String, Atajo> atajos = new HashMap<>();
     private final Map<String, Runnable> acciones = new HashMap<>();
     private final Set<String> activos = new HashSet<>();
     private final List<EntradaListener> oyentes = new CopyOnWriteArrayList<>();
 
-    private final Set<Integer> teclasPresionadas = new HashSet<>();
+    /** Teclas que el sistema reporta como presionadas, con el instante de su último aviso. */
+    private final Map<Integer, Long> teclasPresionadas = new HashMap<>();
     private final Set<Integer> teclasDeAtajo = new HashSet<>();
     private final Set<Integer> botonesDeAtajo = new HashSet<>();
 
     private Consumer<Atajo> capturaPendiente;
     private boolean tolerarModificadores = false;
     private boolean disponible = false;
+    private FalloEscucha fallo = null;
+
+    private final LongSupplier reloj;
+    // Instante de llegada del evento que se está atendiendo (solo hilo de Swing)
+    private long instanteEnCurso;
+    private boolean hayInstanteEnCurso = false;
+
+    public AtajoService() {
+        this(System::nanoTime);
+    }
+
+    /** Permite inyectar el reloj, en nanosegundos (útil para pruebas). */
+    AtajoService(LongSupplier reloj) {
+        this.reloj = reloj;
+    }
+
+    /**
+     * Por qué no se pudo activar la escucha global.
+     * @param resumen una línea corta, para mostrar en la ventana
+     * @param ayuda   explicación y pasos para resolverlo, para un diálogo
+     */
+    public record FalloEscucha(String resumen, String ayuda) { }
 
     /**
      * Activa la escucha global.
@@ -65,14 +100,19 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
         registro.setLevel(Level.WARNING);
         registro.setUseParentHandlers(false);
         try {
-            GlobalScreen.setEventDispatcher(new SwingDispatchService());
+            GlobalScreen.setEventDispatcher(new DespachoConHora());
             GlobalScreen.registerNativeHook();
             GlobalScreen.addNativeKeyListener(this);
             GlobalScreen.addNativeMouseListener(this);
             GlobalScreen.addNativeMouseWheelListener(this);
             disponible = true;
-        } catch (NativeHookException | LinkageError e) {
+            fallo = null;
+        } catch (NativeHookException e) {
             disponible = false;
+            fallo = describir(e);
+        } catch (LinkageError e) {
+            disponible = false;
+            fallo = describir(e);
         }
         return disponible;
     }
@@ -91,6 +131,11 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
 
     public boolean estaDisponible() {
         return disponible;
+    }
+
+    /** Por qué falló la escucha global; vacío si está activa. */
+    public Optional<FalloEscucha> fallo() {
+        return Optional.ofNullable(fallo);
     }
 
     // ---- Registro de atajos ----
@@ -154,7 +199,13 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
     @Override
     public void nativeKeyPressed(NativeKeyEvent e) {
         int codigo = e.getKeyCode();
-        boolean repeticion = !teclasPresionadas.add(codigo);
+        long instante = instante();
+        Long anterior = teclasPresionadas.put(codigo, instante);
+        boolean repeticion = anterior != null && instante - anterior < CADUCIDAD_PULSACION_NS;
+        // Pulsación nueva de una tecla que figuraba como atajo en curso: se perdió
+        // su aviso de soltar (por ejemplo, al bloquear la sesión). Se olvida esa
+        // marca para que el atajo responda ya, y no a la segunda pulsación.
+        if (!repeticion) teclasDeAtajo.remove(codigo);
         if (teclasDeAtajo.contains(codigo)) return; // repetición de una tecla usada como atajo
 
         if (estaCapturando()) {
@@ -178,15 +229,16 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
                 return;
             }
         }
-        oyentes.forEach(o -> o.teclaPresionada(e));
+        oyentes.forEach(o -> o.teclaPresionada(e, instante));
     }
 
     @Override
     public void nativeKeyReleased(NativeKeyEvent e) {
         int codigo = e.getKeyCode();
+        long instante = instante();
         teclasPresionadas.remove(codigo);
         if (teclasDeAtajo.remove(codigo)) return;
-        oyentes.forEach(o -> o.teclaSoltada(e));
+        oyentes.forEach(o -> o.teclaSoltada(e, instante));
     }
 
     // ---- Mouse (solo los botones laterales pueden ser atajo) ----
@@ -213,18 +265,67 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
                 return;
             }
         }
-        oyentes.forEach(o -> o.botonPresionado(e));
+        long instante = instante();
+        oyentes.forEach(o -> o.botonPresionado(e, instante));
     }
 
     @Override
     public void nativeMouseReleased(NativeMouseEvent e) {
         if (botonesDeAtajo.remove(e.getButton())) return;
-        oyentes.forEach(o -> o.botonSoltado(e));
+        long instante = instante();
+        oyentes.forEach(o -> o.botonSoltado(e, instante));
     }
 
     @Override
     public void nativeMouseWheelMoved(NativeMouseWheelEvent e) {
-        oyentes.forEach(o -> o.ruedaMovida(e));
+        long instante = instante();
+        oyentes.forEach(o -> o.ruedaMovida(e, instante));
+    }
+
+    // ---- Hora de los eventos ----
+
+    /**
+     * Instante (System.nanoTime) en que llegó del sistema el evento que se está
+     * atendiendo. Si el aviso no pasó por {@link DespachoConHora} (por ejemplo,
+     * en una prueba), es el instante actual.
+     */
+    private long instante() {
+        return hayInstanteEnCurso ? instanteEnCurso : reloj.getAsLong();
+    }
+
+    /**
+     * Entrega los eventos en el hilo de Swing, igual que el SwingDispatchService
+     * de JNativeHook, pero antes anota cuándo llegaron. JNativeHook llama a
+     * execute() desde su propio hilo en cuanto el sistema le avisa, así que esa
+     * hora no depende de lo ocupado que esté el hilo de Swing.
+     *
+     * No se usa NativeInputEvent.getWhen() porque su reloj cambia según el
+     * sistema: en Linux es la hora del servidor X y en Windows el contador de
+     * ticks, que puede avanzar a saltos de varios milisegundos.
+     */
+    private final class DespachoConHora extends AbstractExecutorService {
+
+        private volatile boolean cerrado = false;
+
+        @Override
+        public void execute(Runnable entrega) {
+            long llegada = reloj.getAsLong();   // hilo de JNativeHook
+            SwingUtilities.invokeLater(() -> {
+                instanteEnCurso = llegada;
+                hayInstanteEnCurso = true;
+                try {
+                    entrega.run();
+                } finally {
+                    hayInstanteEnCurso = false;
+                }
+            });
+        }
+
+        @Override public void shutdown() { cerrado = true; }
+        @Override public List<Runnable> shutdownNow() { cerrado = true; return List.of(); }
+        @Override public boolean isShutdown() { return cerrado; }
+        @Override public boolean isTerminated() { return cerrado; }
+        @Override public boolean awaitTermination(long tiempo, TimeUnit unidad) { return true; }
     }
 
     // ---- Búsqueda de atajos activos ----
@@ -249,6 +350,52 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
             if (a != null && a.coincideConBoton(boton)) return acciones.get(clave);
         }
         return null;
+    }
+
+    // ---- Diagnóstico de fallos ----
+
+    /** Traduce el código de error de JNativeHook a un mensaje que el usuario pueda entender. */
+    static FalloEscucha describir(NativeHookException e) {
+        String tecnico = "\n\nDetalle técnico: "
+                + (e.getMessage() != null ? e.getMessage() : "código " + e.getCode());
+        return switch (e.getCode()) {
+            case NativeHookException.DARWIN_AXAPI_DISABLED,
+                 NativeHookException.DARWIN_CREATE_EVENT_PORT -> new FalloEscucha(
+                    "Faltan permisos de macOS para los atajos",
+                    "Activa AutoClicker en Configuración del Sistema → Privacidad y seguridad, "
+                            + "en Accesibilidad y en Monitoreo de entrada, y vuelve a abrir la aplicación."
+                            + tecnico);
+            case NativeHookException.X11_OPEN_DISPLAY -> new FalloEscucha(
+                    "No se pudo abrir la pantalla X11",
+                    "La escucha global de Linux necesita una sesión X11. En Wayland no funciona: "
+                            + "en la pantalla de inicio de sesión elige \"Ubuntu en Xorg\" "
+                            + "(o el equivalente de tu distribución)." + tecnico);
+            case NativeHookException.X11_RECORD_NOT_FOUND,
+                 NativeHookException.X11_RECORD_ALLOC_RANGE,
+                 NativeHookException.X11_RECORD_CREATE_CONTEXT,
+                 NativeHookException.X11_RECORD_ENABLE_CONTEXT,
+                 NativeHookException.X11_RECORD_GET_CONTEXT -> new FalloEscucha(
+                    "X11 no ofrece la extensión para los atajos",
+                    "El servidor X11 de esta sesión no permite la extensión XRecord, que la escucha "
+                            + "global necesita. Prueba con una sesión X11 estándar (Xorg)." + tecnico);
+            case NativeHookException.WIN_SET_HOOK -> new FalloEscucha(
+                    "Windows no permitió activar los atajos",
+                    "Windows rechazó registrar la escucha de teclado y mouse. Puede estar bloqueada "
+                            + "por un antivirus o una directiva del sistema." + tecnico);
+            default -> new FalloEscucha(
+                    "No se pudo activar la escucha global",
+                    "El resto de la aplicación sigue funcionando, pero los atajos globales y la "
+                            + "grabación de clics y teclas pueden no estar disponibles." + tecnico);
+        };
+    }
+
+    /** Falla al cargar la librería nativa (sistema o procesador no soportado, carpeta sin permisos...). */
+    static FalloEscucha describir(LinkageError e) {
+        return new FalloEscucha(
+                "No se pudo cargar la librería nativa",
+                "JNativeHook no pudo cargar su librería para este sistema o procesador, o la carpeta "
+                        + "de datos de la aplicación no permite escribir."
+                        + "\n\nDetalle técnico: " + e);
     }
 
     // ---- Utilidades ----

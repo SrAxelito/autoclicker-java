@@ -18,6 +18,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ReproductorService {
 
     private static final long DURACION_MINIMA_MS = 50;
+    /** Cuánto se espera a que termine el hilo de la reproducción anterior antes de rendirse. */
+    private static final long ESPERA_HILO_ANTERIOR_MS = 200;
 
     private final Robot robot;
     private final AtomicBoolean corriendo = new AtomicBoolean(false);
@@ -41,18 +43,34 @@ public class ReproductorService {
         this.listener = (listener != null) ? listener : EstadoListener.NINGUNO;
     }
 
+    /**
+     * true desde que se inicia una reproducción hasta que termina o se pide detenerla.
+     * Es la fuente de verdad para la interfaz: se puede leer desde cualquier hilo.
+     */
     public boolean estaCorriendo() {
         return corriendo.get();
     }
 
-    public synchronized void iniciar(Grabacion grabacion, int repeticiones) {
-        if (grabacion.estaVacia()) return;
+    /**
+     * Inicia la reproducción.
+     * @return false si no se inició (grabación vacía o ya hay una reproducción en
+     *         marcha); en ese caso no habrá avisos nuevos al listener
+     */
+    public synchronized boolean iniciar(Grabacion grabacion, int repeticiones) {
         if (repeticiones < 0) throw new IllegalArgumentException("Las repeticiones no pueden ser negativas.");
-        if (hilo != null && hilo.isAlive()) return;
+        if (grabacion.estaVacia()) return false;
+        if (hilo != null && hilo.isAlive()) {
+            if (corriendo.get()) return false;   // ya hay una reproducción en marcha
+            // La anterior ya se detuvo y su hilo está soltando teclas y avisando:
+            // tarda muy poco, así que se le espera en lugar de perder la pulsación.
+            esperarHiloAnterior();
+            if (hilo.isAlive()) return false;
+        }
         corriendo.set(true);
         hilo = new Thread(() -> ejecutar(grabacion, repeticiones), "hilo-reproduccion");
         hilo.setDaemon(true);
         hilo.start();
+        return true;
     }
 
     public synchronized void detener() {
@@ -160,6 +178,14 @@ public class ReproductorService {
         }
         teclasSostenidas.clear();
         botonesSostenidos.clear();
+    }
+
+    private void esperarHiloAnterior() {
+        try {
+            hilo.join(ESPERA_HILO_ANTERIOR_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private static int mascara(int boton) {

@@ -1,7 +1,7 @@
 name: Compilar
 
-# - En cada push a main/develop y en cada Pull Request: compila en Windows,
-#   macOS y Linux para comprobar que nada se rompió.
+# - En cada push a main/develop y en cada Pull Request: ejecuta las pruebas y
+#   compila en Windows, macOS y Linux para comprobar que nada se rompió.
 # - Al subir una etiqueta vX.Y.Z: además publica los ejecutables en un Release.
 on:
   push:
@@ -38,6 +38,15 @@ jobs:
             echo "valor=" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Pruebas (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: probar.bat
+
+      - name: Pruebas (macOS y Linux)
+        if: runner.os != 'Windows'
+        run: bash probar.sh
+
       - name: Compilar (Windows)
         if: runner.os == 'Windows'
         shell: cmd
@@ -51,10 +60,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AutoClicker-${{ runner.os }}
+          # El paquete de cada sistema; la versión portable es igual en los tres,
+          # así que solo se toma la de Linux.
           path: |
-            dist/*.zip
+            dist/*-windows-*.zip
+            dist/*-macos-*.zip
             dist/*.tar.gz
-            ${{ runner.os == 'Linux' && 'dist/*.jar' || '' }}
+            ${{ runner.os == 'Linux' && 'dist/*-portable.zip' || '' }}
 
   publicar:
     name: Publicar Release

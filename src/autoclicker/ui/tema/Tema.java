@@ -2,8 +2,8 @@ package autoclicker.ui.tema;
 
 import java.awt.*;
 import java.awt.font.TextAttribute;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -49,13 +49,31 @@ public final class Tema {
 
     private static final String FAMILIA = elegirFamilia();
 
+    /**
+     * Busca la primera familia instalada entre las preferidas.
+     *
+     * No se pide la lista completa de fuentes del sistema: armarla obliga a
+     * Java a leer todas las fuentes instaladas y retrasa la apertura de la
+     * ventana. Preguntar por una familia que sí existe es inmediato, así que
+     * la primera candidata es la que trae cada sistema.
+     */
     private static String elegirFamilia() {
-        List<String> disponibles = Arrays.asList(GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .getAvailableFontFamilyNames());
-        for (String preferida : new String[]{"Segoe UI", "Inter", "Roboto", "Helvetica Neue"}) {
-            if (disponibles.contains(preferida)) return preferida;
+        for (String candidata : candidatas()) {
+            if (estaInstalada(candidata)) return candidata;
         }
         return Font.SANS_SERIF;
+    }
+
+    private static String[] candidatas() {
+        String sistema = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (sistema.contains("win")) return new String[]{"Segoe UI", "Inter", "Roboto"};
+        if (sistema.contains("mac")) return new String[]{"Helvetica Neue", "Inter", "Roboto"};
+        return new String[]{"Inter", "Roboto"};
+    }
+
+    /** Cuando una familia no existe, Java entrega en su lugar la fuente genérica "Dialog". */
+    private static boolean estaInstalada(String familia) {
+        return new Font(familia, Font.PLAIN, 12).getFamily(Locale.ENGLISH).equalsIgnoreCase(familia);
     }
 
     public static Font fuente(int estilo, float tamano) {

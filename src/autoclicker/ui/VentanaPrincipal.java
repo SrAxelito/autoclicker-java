@@ -3,8 +3,6 @@ package autoclicker.ui;
 import autoclicker.persistencia.PreferenciasRepository;
 import autoclicker.servicio.AtajoService;
 import autoclicker.servicio.ClickerService;
-import autoclicker.servicio.GrabadoraService;
-import autoclicker.servicio.ReproductorService;
 import autoclicker.ui.componentes.BotonEngranaje;
 import autoclicker.ui.componentes.ControlSegmentado;
 import autoclicker.ui.componentes.Etiqueta;
@@ -17,6 +15,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -37,28 +36,22 @@ public class VentanaPrincipal extends JFrame {
     private final BotonEngranaje opcionesBtn = new BotonEngranaje();
     private final JLabel logo = new JLabel();
 
+    /**
+     * @param grabaciones una pestaña de grabación por cada elemento, en ese orden,
+     *                    después de la pestaña del autoclicker
+     */
     public VentanaPrincipal(AtajoService atajos, PreferenciasRepository preferencias,
-                            ClickerService clicker,
-                            GrabadoraService grabadoraMouse, ReproductorService reproductorMouse,
-                            GrabadoraService grabadoraTeclado, ReproductorService reproductorTeclado,
-                            GrabadoraService grabadoraCompleta, ReproductorService reproductorCompleto) {
+                            ClickerService clicker, List<ModoGrabacion> grabaciones) {
         super("AutoClicker");
         this.atajos = atajos;
         this.preferencias = preferencias;
-        this.modos = List.of(
-                new PanelAutoclicker(clicker, atajos, preferencias),
-                new PanelMacro("Mouse",
-                        "Graba movimientos, clics y rueda del mouse",
-                        "atajo.mouse", AtajoService.F7, AtajoService.F8,
-                        grabadoraMouse, reproductorMouse, atajos, preferencias),
-                new PanelMacro("Teclado",
-                        "Graba las teclas que presionas y sueltas",
-                        "atajo.teclado", AtajoService.F9, AtajoService.F10,
-                        grabadoraTeclado, reproductorTeclado, atajos, preferencias),
-                new PanelMacro("Mouse + Teclado",
-                        "Graba el mouse y el teclado al mismo tiempo",
-                        "atajo.completo", AtajoService.F11, AtajoService.F12,
-                        grabadoraCompleta, reproductorCompleto, atajos, preferencias));
+
+        List<ModoPanel> pestanasDeModos = new ArrayList<>();
+        pestanasDeModos.add(new PanelAutoclicker(clicker, atajos, preferencias));
+        for (ModoGrabacion grabacion : grabaciones) {
+            pestanasDeModos.add(new PanelMacro(grabacion, atajos, preferencias));
+        }
+        this.modos = List.copyOf(pestanasDeModos);
 
         String[] titulos = modos.stream().map(ModoPanel::titulo).toArray(String[]::new);
         pestanas = new ControlSegmentado<>(modos.toArray(new ModoPanel[0]), titulos);
@@ -88,12 +81,25 @@ public class VentanaPrincipal extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override public void windowOpened(WindowEvent e) {
                 getContentPane().requestFocusInWindow();
+                avisarSiFallaLaEscucha();
             }
             @Override public void windowClosing(WindowEvent e) {
                 modos.forEach(ModoPanel::detenerTodo);
+                guardarParametros();
                 atajos.cerrar();
             }
         });
+    }
+
+    /** Guardar es un extra: si falla, la ventana se cierra igual. */
+    private void guardarParametros() {
+        for (ModoPanel modo : modos) {
+            try {
+                modo.guardarParametros();
+            } catch (RuntimeException ignored) {
+                // La próxima vez esa pestaña abrirá con lo último que sí se guardó.
+            }
+        }
     }
 
     // ---- Modos ----
@@ -102,6 +108,20 @@ public class VentanaPrincipal extends JFrame {
         if (atajos.estaCapturando()) atajos.cancelarCaptura();
         tarjetas.show(contenido, modo.titulo());
         atajos.activarSolo(modo.clavesAtajo());
+    }
+
+    /** Si la escucha global no arrancó, explica por qué y qué hacer (un solo aviso al abrir). */
+    private void avisarSiFallaLaEscucha() {
+        atajos.fallo().ifPresent(fallo -> SwingUtilities.invokeLater(() -> {
+            String html = "<html><body style='width: 340px'><b>" + escaparHtml(fallo.resumen()) + "</b><br><br>"
+                    + escaparHtml(fallo.ayuda()).replace("\n", "<br>") + "</body></html>";
+            JOptionPane.showMessageDialog(this, html,
+                    "Atajos globales no disponibles", JOptionPane.WARNING_MESSAGE);
+        }));
+    }
+
+    private static String escaparHtml(String texto) {
+        return texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     /** Mientras un modo está trabajando no se puede cambiar de pestaña ni abrir opciones. */

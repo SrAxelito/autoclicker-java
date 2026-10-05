@@ -1,6 +1,8 @@
 package autoclicker.modelo;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Secuencia de acciones grabadas y cuánto duró la grabación.
@@ -23,7 +25,21 @@ public record Grabacion(List<EventoMacro> eventos, long duracionMs) {
         return eventos.stream().filter(e -> e instanceof EventoMacro.PresionBoton).count();
     }
 
+    /**
+     * Pulsaciones de teclas. Al mantener una tecla, el teclado repite el aviso
+     * de "presionada" muchas veces antes de soltarla; todas esas repeticiones
+     * cuentan como una sola pulsación.
+     */
     public long cantidadTeclas() {
-        return eventos.stream().filter(e -> e instanceof EventoMacro.PresionTecla).count();
+        Set<Integer> sostenidas = new HashSet<>();
+        long pulsaciones = 0;
+        for (EventoMacro evento : eventos) {
+            if (evento instanceof EventoMacro.PresionTecla presion) {
+                if (sostenidas.add(presion.codigoTecla())) pulsaciones++;
+            } else if (evento instanceof EventoMacro.SueltaTecla suelta) {
+                sostenidas.remove(suelta.codigoTecla());
+            }
+        }
+        return pulsaciones;
     }
 }

@@ -3,8 +3,9 @@ package autoclicker.modelo;
 import java.util.Objects;
 
 /**
- * Tecla (con modificadores opcionales) o botón lateral del mouse que
- * inicia y detiene el autoclicker desde cualquier programa.
+ * Tecla (con modificadores opcionales) o botón lateral del mouse que dispara
+ * una acción desde cualquier programa. Cada modo tiene los suyos: iniciar o
+ * detener el autoclicker, grabar y reproducir.
  *
  * @param tipo          si es una tecla o un botón del mouse
  * @param codigo        código de la tecla o número del botón
