@@ -13,6 +13,9 @@ salida/
 .vscode/
 *.iml
 
+# JUnit, que probar.bat / probar.sh descargan la primera vez
+lib/pruebas/
+
 # Librerías nativas que JNativeHook extrae al ejecutarse
 lib/*.dll
 lib/*.so
