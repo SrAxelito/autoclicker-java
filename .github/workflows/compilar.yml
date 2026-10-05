@@ -1,7 +1,7 @@
 name: Compilar
 
-# - En cada push a main/develop y en cada Pull Request: compila en Windows,
-#   macOS y Linux para comprobar que nada se rompió.
+# - En cada push a main/develop y en cada Pull Request: ejecuta las pruebas y
+#   compila en Windows, macOS y Linux para comprobar que nada se rompió.
 # - Al subir una etiqueta vX.Y.Z: además publica los ejecutables en un Release.
 on:
   push:
@@ -37,6 +37,15 @@ jobs:
           else
             echo "valor=" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Pruebas (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: probar.bat
+
+      - name: Pruebas (macOS y Linux)
+        if: runner.os != 'Windows'
+        run: bash probar.sh
 
       - name: Compilar (Windows)
         if: runner.os == 'Windows'
