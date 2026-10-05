@@ -53,18 +53,19 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
         atajo.setAlCambiar(this::mostrarAtajo);
         mostrarConfiguracion(preferencias.cargarConfiguracionClics(leerConfiguracion()));
 
-        Diseno.Pila pila = new Diseno.Pila(this);
-        pila.agregar(Diseno.dosColumnas(
+        Diseno.Pila opciones = pilaDeOpciones();
+        opciones.agregar(Diseno.dosColumnas(
                 Diseno.tarjeta("Intervalo entre clics", intervaloCampo, null),
                 Diseno.tarjeta("Espera inicial", esperaCampo, null)), 0);
-        pila.agregar(Diseno.tarjeta("Botón del mouse", botonControl, null), 12);
-        pila.agregar(Diseno.dosColumnas(
+        opciones.agregar(Diseno.tarjeta("Botón del mouse", botonControl, null), 12);
+        opciones.agregar(Diseno.dosColumnas(
                 Diseno.tarjeta("Tipo de clic", tipoControl, null),
                 Diseno.tarjeta("Repeticiones", clicsCampo, "0 = repetir hasta detener")), 12);
-        pila.agregar(Diseno.tarjeta("Atajo para iniciar / detener", atajo.selector(), notaAtajo()), 12);
-        pila.agregarRelleno();
-        pila.agregar(estado, 18);
-        pila.agregar(Diseno.dosColumnas(iniciarBtn, detenerBtn), 12);
+        opciones.agregar(Diseno.tarjeta("Atajo para iniciar / detener", atajo.selector(), notaAtajo()), 12);
+
+        Diseno.Pila pie = pilaDelPie();
+        pie.agregar(estado, 28);
+        pie.agregar(Diseno.dosColumnas(iniciarBtn, detenerBtn), 12);
 
         iniciarBtn.addActionListener(e -> iniciar());
         detenerBtn.addActionListener(e -> servicio.detener());

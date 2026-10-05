@@ -25,6 +25,8 @@ import java.util.List;
 public class VentanaPrincipal extends JFrame {
 
     private static final int ANCHO_MINIMO = 500;
+    /** Lo más baja que se puede dejar la ventana: caben el encabezado, el pie y un poco de las opciones. */
+    private static final int ALTO_MINIMO = 440;
 
     private final List<ModoPanel> modos;
     private final AtajoService atajos;
@@ -73,9 +75,8 @@ public class VentanaPrincipal extends JFrame {
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setAlwaysOnTop(true);
-        setResizable(false);
-        pack();
-        if (getWidth() < ANCHO_MINIMO) setSize(ANCHO_MINIMO, getHeight());
+        setResizable(true);
+        ajustarALaPantalla();
         setLocationRelativeTo(null);
 
         addWindowListener(new WindowAdapter() {
@@ -89,6 +90,20 @@ public class VentanaPrincipal extends JFrame {
                 atajos.cerrar();
             }
         });
+    }
+
+    /**
+     * Da a la ventana el tamaño que pide su contenido, sin pasarse del espacio
+     * libre de la pantalla (el que deja la barra de tareas). Si la pantalla es
+     * más baja que el contenido, las opciones de cada pestaña se desplazan.
+     */
+    private void ajustarALaPantalla() {
+        pack();
+        Rectangle pantalla = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+        int ancho = Math.min(Math.max(getWidth(), ANCHO_MINIMO), pantalla.width);
+        int alto = Math.min(getHeight(), pantalla.height);
+        setSize(ancho, alto);
+        setMinimumSize(new Dimension(ancho, Math.min(alto, ALTO_MINIMO)));
     }
 
     /** Guardar es un extra: si falla, la ventana se cierra igual. */
@@ -139,14 +154,19 @@ public class VentanaPrincipal extends JFrame {
     // ---- Construcción de la interfaz ----
 
     private void construirInterfaz() {
-        PanelFondo raiz = new PanelFondo(new GridBagLayout());
-        raiz.setBorder(new EmptyBorder(22, 22, 22, 22));
-        raiz.setFocusable(true); // recibe el foco al abrir, así ningún campo aparece seleccionado
-
-        Diseno.Pila pila = new Diseno.Pila(raiz);
+        // Arriba va lo que no cambia de alto; el modo elegido se queda con el resto,
+        // así que es el único que cede cuando la ventana se achica.
+        JPanel arriba = new JPanel(new GridBagLayout());
+        arriba.setOpaque(false);
+        Diseno.Pila pila = new Diseno.Pila(arriba);
         pila.agregar(encabezado(), 0);
         pila.agregar(pestanas, 18);
-        pila.agregar(contenido, 18, 1);
+
+        PanelFondo raiz = new PanelFondo(new BorderLayout(0, 18));
+        raiz.setBorder(new EmptyBorder(22, 22, 22, 22));
+        raiz.setFocusable(true); // recibe el foco al abrir, así ningún campo aparece seleccionado
+        raiz.add(arriba, BorderLayout.NORTH);
+        raiz.add(contenido, BorderLayout.CENTER);
 
         setContentPane(raiz);
     }
