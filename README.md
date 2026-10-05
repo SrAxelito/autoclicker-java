@@ -26,7 +26,7 @@ En los modos de grabación se elige cuántas veces repetir (0 = hasta detener). 
 
 - Atajos globales configurables con cualquier tecla, combinación con Ctrl/Alt/Shift o botón lateral del mouse
 - Opciones con selección de tema claro u oscuro
-- Los atajos y el tema se recuerdan entre ejecuciones
+- Los atajos, el tema y los parámetros de cada pestaña se recuerdan entre ejecuciones
 
 ## Descargar y usar
 
@@ -68,7 +68,7 @@ Los dos `.jar` deben quedar juntos: si mueves `AutoClicker.jar` a otro lugar sin
 
 ## Datos que guarda
 
-- **Preferencias** (atajos y tema): con `java.util.prefs`, en el registro del usuario en Windows y en la carpeta de preferencias del usuario en macOS y Linux.
+- **Preferencias** (atajos, tema y parámetros de cada pestaña): con `java.util.prefs`, en el registro del usuario en Windows y en la carpeta de preferencias del usuario en macOS y Linux.
 - **Librería nativa de JNativeHook**: se extrae en `%LOCALAPPDATA%\AutoClicker\nativo` (Windows), `~/Library/Application Support/AutoClicker/nativo` (macOS) o `~/.local/share/autoclicker/nativo` (Linux), para que funcione aunque el programa esté en una carpeta sin permisos de escritura.
 
 Las grabaciones no se guardan: se pierden al cerrar el programa.
@@ -86,7 +86,7 @@ src/autoclicker/
 │   ├── Grabacion.java                Secuencia de acciones con su duración
 │   └── TipoGrabacion.java            Qué graba cada modo: mouse, teclado o ambos
 ├── persistencia/
-│   └── PreferenciasRepository.java   Guarda atajos y tema (java.util.prefs)
+│   └── PreferenciasRepository.java   Guarda atajos, tema y parámetros (java.util.prefs)
 ├── servicio/
 │   ├── AtajoService.java             Escucha global, atajos y captura (JNativeHook)
 │   ├── ClickerService.java           Lógica del autoclicker (Robot + hilo)
@@ -100,7 +100,7 @@ src/autoclicker/
     ├── PanelModo.java                Base con lo común de las pestañas
     ├── PanelAutoclicker.java         Pestaña Autoclicker
     ├── PanelMacro.java               Pestañas de grabación (Mouse, Teclado, Mouse + Teclado)
-    ├── ModoGrabacion.java            Textos, atajos y servicios de cada pestaña de grabación
+    ├── ModoGrabacion.java            Textos, claves, atajos y servicios de cada pestaña de grabación
     ├── AtajoConfigurable.java        Atajo + selector + preferencias
     ├── Diseno.java                   Utilidades de maquetación
     ├── DialogoOpciones.java          Ventana de opciones
