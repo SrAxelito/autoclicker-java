@@ -18,6 +18,8 @@ import java.util.List;
 
 /**
  * Pestaña del autoclicker: clics repetidos en la posición actual del mouse.
+ * Los parámetros se guardan al iniciar y al cerrar la ventana, y se
+ * recuperan al abrir el programa.
  */
 class PanelAutoclicker extends PanelModo implements EstadoListener {
 
@@ -26,8 +28,10 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
 
     private final ClickerService servicio;
     private final AtajoService atajos;
+    private final PreferenciasRepository preferencias;
     private final AtajoConfigurable atajo;
 
+    // Los valores con los que nacen los campos son los predeterminados de la primera vez
     private final CampoNumerico intervaloCampo = new CampoNumerico(100, 1, 600_000, 10, "ms");
     private final CampoNumerico esperaCampo    = new CampoNumerico(3, 0, 60, 1, "s");
     private final CampoNumerico clicsCampo     = new CampoNumerico(0, 0, 10_000_000, 1, "clics");
@@ -44,8 +48,10 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
     PanelAutoclicker(ClickerService servicio, AtajoService atajos, PreferenciasRepository preferencias) {
         this.servicio = servicio;
         this.atajos = atajos;
+        this.preferencias = preferencias;
         this.atajo = new AtajoConfigurable(CLAVE_ATAJO, AtajoService.F6, this::alternar, atajos, preferencias);
         atajo.setAlCambiar(this::mostrarAtajo);
+        mostrarConfiguracion(preferencias.cargarConfiguracionClics(leerConfiguracion()));
 
         Diseno.Pila pila = new Diseno.Pila(this);
         pila.agregar(Diseno.dosColumnas(
@@ -79,22 +85,45 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
         servicio.detener();
     }
 
+    @Override
+    public void guardarParametros() {
+        preferencias.guardarConfiguracionClics(leerConfiguracion());
+    }
+
+    // ---- Parámetros ----
+
+    /** Arma la configuración con lo que hay ahora mismo en los campos. */
+    private ConfiguracionClics leerConfiguracion() {
+        return new ConfiguracionClics(
+                intervaloCampo.getValor(),
+                clicsCampo.getValor(),
+                esperaCampo.getValor(),
+                botonControl.getSeleccion(),
+                tipoControl.getSeleccion());
+    }
+
+    /** Pone una configuración en los campos; cada campo ajusta el valor a sus propios límites. */
+    private void mostrarConfiguracion(ConfiguracionClics config) {
+        intervaloCampo.setValor((int) Math.min(config.intervaloMs(), Integer.MAX_VALUE));
+        clicsCampo.setValor(config.maxClics());
+        esperaCampo.setValor(config.esperaSegundos());
+        botonControl.setSeleccion(config.boton());
+        tipoControl.setSeleccion(config.dobleClic());
+    }
+
     // ---- Acciones ----
 
     private void iniciar() {
         if (atajos.estaCapturando()) atajos.cancelarCaptura();
         try {
-            ConfiguracionClics config = new ConfiguracionClics(
-                    intervaloCampo.getValor(),
-                    clicsCampo.getValor(),
-                    esperaCampo.getValor(),
-                    botonControl.getSeleccion(),
-                    tipoControl.getSeleccion());
+            ConfiguracionClics config = leerConfiguracion();
             // Si ya había una sesión en marcha no se inició nada y no habrá aviso de
             // final: la interfaz se deja como está.
             if (!servicio.iniciar(config)) return;
             relojProgreso.start();
             actualizarControles();
+            // Se guarda aquí además de al cerrar, por si el programa no se cierra con la X.
+            preferencias.guardarConfiguracionClics(config);
         } catch (IllegalArgumentException | NullPointerException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Configuración inválida", JOptionPane.WARNING_MESSAGE);
