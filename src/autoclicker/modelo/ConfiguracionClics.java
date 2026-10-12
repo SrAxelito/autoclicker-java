@@ -6,7 +6,7 @@ import java.util.Objects;
  * Parámetros de una sesión de clics. Es inmutable: si algo cambia,
  * se crea una configuración nueva.
  *
- * @param intervaloMs     milisegundos entre cada clic (mínimo 1)
+ * @param intervaloMs     milisegundos entre cada clic (mínimo 10 ms para evitar saturar el SO y congelar juegos)
  * @param maxClics        cantidad de clics a realizar; 0 significa infinito
  * @param esperaSegundos  cuenta regresiva antes de empezar
  * @param boton           botón del mouse a presionar
@@ -19,9 +19,13 @@ public record ConfiguracionClics(
         BotonMouse boton,
         boolean dobleClic) {
 
+    /** Límite mínimo seguro para prevenir colapso de la cola de eventos y congelamientos en juegos. */
+    public static final long INTERVALO_MINIMO_MS = 10;
+
     public ConfiguracionClics {
-        if (intervaloMs < 1) {
-            throw new IllegalArgumentException("El intervalo debe ser de al menos 1 ms.");
+        if (intervaloMs < INTERVALO_MINIMO_MS) {
+            throw new IllegalArgumentException(
+                    "El intervalo debe ser de al menos " + INTERVALO_MINIMO_MS + " ms.");
         }
         if (maxClics < 0) {
             throw new IllegalArgumentException("El número de clics no puede ser negativo.");

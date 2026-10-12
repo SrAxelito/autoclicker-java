@@ -151,10 +151,14 @@ public class ClickerService {
         }
     }
 
+    /** Pausa mínima garantizada entre mousePress y mouseRelease para permitir que el SO y juegos procesen eventos. */
+    private static final long PAUSA_PRESION_MIN_MS = 2;
+
     private void clic(int mascara, long pausaPresionMs) throws InterruptedException {
         robot.mousePress(mascara);
         try {
-            if (pausaPresionMs > 0) Thread.sleep(pausaPresionMs);
+            long pausa = Math.max(pausaPresionMs, PAUSA_PRESION_MIN_MS);
+            Thread.sleep(pausa);
         } finally {
             robot.mouseRelease(mascara);   // aunque se detenga a mitad, el botón nunca queda presionado
         }

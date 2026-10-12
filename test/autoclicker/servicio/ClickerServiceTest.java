@@ -28,23 +28,24 @@ class ClickerServiceTest {
 
     @Test
     void conIntervalosCortosAcortaLaPausaDePresion() {
-        assertEquals(0, ClickerService.pausaPresionMs(simple(1)));
-        assertEquals(2, ClickerService.pausaPresionMs(simple(5)));
         assertEquals(5, ClickerService.pausaPresionMs(simple(10)));
+        assertEquals(7, ClickerService.pausaPresionMs(simple(15)));
         assertEquals(10, ClickerService.pausaPresionMs(simple(20)));
     }
 
     @Test
     void conIntervalosCortosAcortaElDobleClic() {
-        assertEquals(0, ClickerService.pausaPresionMs(doble(1)));
-        assertEquals(0, ClickerService.pausaDobleClicMs(doble(1)));
+        assertEquals(1, ClickerService.pausaPresionMs(doble(10)));
+        assertEquals(2, ClickerService.pausaDobleClicMs(doble(10)));
+        assertEquals(2, ClickerService.pausaPresionMs(doble(20)));
+        assertEquals(5, ClickerService.pausaDobleClicMs(doble(20)));
         assertEquals(6, ClickerService.pausaPresionMs(doble(50)));
         assertEquals(12, ClickerService.pausaDobleClicMs(doble(50)));
     }
 
     @Test
     void unClicSimpleNuncaOcupaMasDeLaMitadDelIntervalo() {
-        for (long intervalo = 1; intervalo <= 2000; intervalo++) {
+        for (long intervalo = ConfiguracionClics.INTERVALO_MINIMO_MS; intervalo <= 2000; intervalo++) {
             long ocupado = ClickerService.pausaPresionMs(simple(intervalo));
             assertTrue(ocupado * 2 <= intervalo, "intervalo de " + intervalo + " ms: el clic ocupa " + ocupado + " ms");
         }
@@ -52,7 +53,7 @@ class ClickerServiceTest {
 
     @Test
     void unDobleClicNuncaOcupaMasDeLaMitadDelIntervalo() {
-        for (long intervalo = 1; intervalo <= 2000; intervalo++) {
+        for (long intervalo = ConfiguracionClics.INTERVALO_MINIMO_MS; intervalo <= 2000; intervalo++) {
             ConfiguracionClics config = doble(intervalo);
             long ocupado = 2 * ClickerService.pausaPresionMs(config) + ClickerService.pausaDobleClicMs(config);
             assertTrue(ocupado * 2 <= intervalo, "intervalo de " + intervalo + " ms: el doble clic ocupa " + ocupado + " ms");
