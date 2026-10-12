@@ -22,6 +22,7 @@ import java.util.List;
  * @param atajoReproducir   atajo de fábrica para reproducir y detener
  * @param grabadora         servicio que graba lo que corresponde a este modo
  * @param reproductor       servicio que reproduce sus grabaciones
+ * @param permiteArchivos   si esta pestaña permite guardar y cargar grabaciones en archivo
  */
 public record ModoGrabacion(
         String titulo,
@@ -31,27 +32,40 @@ public record ModoGrabacion(
         Atajo atajoGrabar,
         Atajo atajoReproducir,
         GrabadoraService grabadora,
-        ReproductorService reproductor) {
+        ReproductorService reproductor,
+        boolean permiteArchivos) {
+
+    public ModoGrabacion(
+            String titulo,
+            String descripcion,
+            String prefijoAtajos,
+            String claveRepeticiones,
+            Atajo atajoGrabar,
+            Atajo atajoReproducir,
+            GrabadoraService grabadora,
+            ReproductorService reproductor) {
+        this(titulo, descripcion, prefijoAtajos, claveRepeticiones, atajoGrabar, atajoReproducir, grabadora, reproductor, false);
+    }
 
     public static ModoGrabacion mouse() throws AWTException {
         return new ModoGrabacion("Mouse",
                 "Graba movimientos, clics y rueda del mouse",
                 "atajo.mouse", "repeticiones.mouse", AtajoService.F7, AtajoService.F8,
-                new GrabadoraService(TipoGrabacion.MOUSE), new ReproductorService());
+                new GrabadoraService(TipoGrabacion.MOUSE), new ReproductorService(), false);
     }
 
     public static ModoGrabacion teclado() throws AWTException {
         return new ModoGrabacion("Teclado",
                 "Graba las teclas que presionas y sueltas",
                 "atajo.teclado", "repeticiones.teclado", AtajoService.F9, AtajoService.F10,
-                new GrabadoraService(TipoGrabacion.TECLADO), new ReproductorService());
+                new GrabadoraService(TipoGrabacion.TECLADO), new ReproductorService(), false);
     }
 
     public static ModoGrabacion completo() throws AWTException {
         return new ModoGrabacion("Mouse + Teclado",
                 "Graba el mouse y el teclado al mismo tiempo",
                 "atajo.completo", "repeticiones.completo", AtajoService.F11, AtajoService.F12,
-                new GrabadoraService(TipoGrabacion.COMPLETA), new ReproductorService());
+                new GrabadoraService(TipoGrabacion.COMPLETA), new ReproductorService(), true);
     }
 
     /**
