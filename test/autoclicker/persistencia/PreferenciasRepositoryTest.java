@@ -124,7 +124,7 @@ class PreferenciasRepositoryTest {
     @Test
     void guardarDeNuevoReemplazaLaConfiguracionDeClicsAnterior() {
         repositorio.guardarConfiguracionClics(new ConfiguracionClics(250, 40, 0, BotonMouse.DERECHO, true));
-        ConfiguracionClics nueva = new ConfiguracionClics(5, 0, 10, BotonMouse.CENTRAL, false);
+        ConfiguracionClics nueva = new ConfiguracionClics(15, 0, 10, BotonMouse.CENTRAL, false);
 
         repositorio.guardarConfiguracionClics(nueva);
 

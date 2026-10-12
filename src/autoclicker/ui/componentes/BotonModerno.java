@@ -12,7 +12,7 @@ import java.awt.geom.RoundRectangle2D;
  */
 public class BotonModerno extends JButton {
 
-    public enum Variante { PRIMARIO, PELIGRO }
+    public enum Variante { PRIMARIO, SECUNDARIO, PELIGRO }
 
     private final Variante variante;
     private String textoCorto;
@@ -67,9 +67,12 @@ public class BotonModerno extends JButton {
         } else if (variante == Variante.PRIMARIO) {
             fondo = Tema.paleta().acento();
             texto = Color.WHITE;
-        } else {
+        } else if (variante == Variante.PELIGRO) {
             fondo = Tema.paleta().peligroFondo();
             texto = Tema.paleta().peligro();
+        } else {
+            fondo = Tema.paleta().campo();
+            texto = Tema.paleta().texto();
         }
 
         if (isEnabled()) {
@@ -77,9 +80,11 @@ public class BotonModerno extends JButton {
             if (m.isPressed()) {
                 fondo = Tema.mezclar(fondo, Color.BLACK, 0.12f);
             } else if (m.isRollover()) {
-                fondo = variante == Variante.PRIMARIO
-                        ? Tema.mezclar(fondo, Color.WHITE, 0.12f)
-                        : Tema.mezclar(fondo, Tema.paleta().peligro(), 0.10f);
+                fondo = switch (variante) {
+                    case PRIMARIO -> Tema.mezclar(fondo, Color.WHITE, 0.12f);
+                    case PELIGRO -> Tema.mezclar(fondo, Tema.paleta().peligro(), 0.10f);
+                    case SECUNDARIO -> Tema.mezclar(fondo, Tema.paleta().borde(), 0.40f);
+                };
             }
         }
 
@@ -88,10 +93,19 @@ public class BotonModerno extends JButton {
         g2.setColor(fondo);
         g2.fill(new RoundRectangle2D.Float(0, 0, w, h, Tema.RADIO, Tema.RADIO));
 
+        if (variante == Variante.SECUNDARIO && isEnabled()) {
+            g2.setColor(Tema.paleta().borde());
+            g2.setStroke(new BasicStroke(1f));
+            g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f, w - 1f, h - 1f, Tema.RADIO, Tema.RADIO));
+        }
+
         if (isFocusOwner() && isEnabled()) {
-            g2.setColor(variante == Variante.PRIMARIO
-                    ? Tema.mezclar(fondo, Color.WHITE, 0.55f)
-                    : Tema.mezclar(Tema.paleta().peligro(), Tema.paleta().peligroFondo(), 0.5f));
+            Color bordeFoco = switch (variante) {
+                case PRIMARIO -> Tema.mezclar(fondo, Color.WHITE, 0.55f);
+                case PELIGRO -> Tema.mezclar(Tema.paleta().peligro(), Tema.paleta().peligroFondo(), 0.5f);
+                case SECUNDARIO -> Tema.paleta().acento();
+            };
+            g2.setColor(bordeFoco);
             g2.setStroke(new BasicStroke(2f));
             g2.draw(new RoundRectangle2D.Float(3, 3, w - 6, h - 6, Tema.RADIO - 4, Tema.RADIO - 4));
         }
