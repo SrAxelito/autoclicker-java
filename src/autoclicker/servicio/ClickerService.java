@@ -161,16 +161,20 @@ public class ClickerService {
     }
 
     /**
-     * Tiempo que el botón queda presionado. Un clic simple ocupa como mucho la
-     * mitad del intervalo y un doble clic (dos presiones más la separación)
-     * también, para que siempre quede tiempo libre antes del siguiente.
+     * Tiempo que el botón queda presionado:
+     * - Clic simple: min(10, intervalo / 2).
+     * - Doble clic: min(10, intervalo / 4).
+     * Con los mínimos (10 ms simple y 20 ms doble), nunca baja de 5 ms.
      */
     static long pausaPresionMs(ConfiguracionClics config) {
-        long limite = config.dobleClic() ? config.intervaloMs() / 8 : config.intervaloMs() / 2;
+        long limite = config.dobleClic() ? config.intervaloMs() / 4 : config.intervaloMs() / 2;
         return Math.min(PAUSA_PRESION_MAX_MS, limite);
     }
 
-    /** Separación entre los dos clics de un doble clic: como mucho un cuarto del intervalo. */
+    /**
+     * Separación entre los dos clics de un doble clic: min(40, intervalo / 4).
+     * Con el mínimo de 20 ms nunca baja de 5 ms y el doble clic ocupa a lo sumo 3/4 del intervalo.
+     */
     static long pausaDobleClicMs(ConfiguracionClics config) {
         return Math.min(PAUSA_DOBLE_CLIC_MAX_MS, config.intervaloMs() / 4);
     }
