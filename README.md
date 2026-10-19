@@ -4,11 +4,12 @@ Herramienta de automatización de escritorio hecha en Java (Swing + `java.awt.Ro
 
 ## Modos
 
-La ventana tiene cuatro pestañas. Los atajos de cada modo solo responden mientras su pestaña está abierta.
+La ventana tiene cinco pestañas. Los atajos de cada modo solo responden mientras su pestaña está abierta.
 
 | Modo | Qué hace | Atajos por defecto |
 |---|---|---|
 | Autoclicker | Clics repetidos en la posición del mouse | F6 iniciar / detener |
+| Autoteclado | Pulsa una tecla o combinación de forma repetida | F6 iniciar / detener |
 | Mouse | Graba y reproduce movimientos, clics y rueda | F7 grabar · F8 reproducir |
 | Teclado | Graba y reproduce solo el teclado | F9 grabar · F10 reproducir |
 | Mouse + Teclado | Graba y reproduce mouse y teclado a la vez | F11 grabar · F12 reproducir |
@@ -17,9 +18,16 @@ En los modos de grabación se elige cuántas veces repetir (0 = hasta detener). 
 
 ## Funciones del autoclicker
 
-- Intervalo configurable en milisegundos, desde 1 ms
+- Intervalo configurable en milisegundos, desde 10 ms (100 clics por segundo; 20 ms con doble clic)
 - Número de clics limitado o infinito (0 = infinito)
 - Botón izquierdo, derecho o central, con opción de doble clic
+- Cuenta regresiva antes de empezar
+
+## Funciones del autoteclado
+
+- Intervalo configurable en milisegundos, desde 10 ms
+- Selección de tecla o combinación con modificadores (Ctrl, Alt, Shift)
+- Número de pulsaciones limitado o infinito (0 = infinito)
 - Cuenta regresiva antes de empezar
 
 ## Generales
@@ -83,6 +91,7 @@ src/autoclicker/
 │   ├── Atajo.java                    Tecla o botón de un atajo global
 │   ├── BotonMouse.java               Botones disponibles
 │   ├── ConfiguracionClics.java       Parámetros del autoclicker
+│   ├── ConfiguracionTecleo.java      Parámetros del autoteclado
 │   ├── EventoMacro.java              Acciones grabables (mouse y teclado)
 │   ├── Grabacion.java                Secuencia de acciones con su duración
 │   └── TipoGrabacion.java            Qué graba cada modo: mouse, teclado o ambos
@@ -91,15 +100,18 @@ src/autoclicker/
 ├── servicio/
 │   ├── AtajoService.java             Escucha global, atajos y captura (JNativeHook)
 │   ├── ClickerService.java           Lógica del autoclicker (Robot + hilo)
+│   ├── ConversorTeclas.java          Conversor de teclas a códigos de Java (Robot)
 │   ├── EntradaListener.java          Pulsaciones que no son atajos, con su hora de llegada
 │   ├── EstadoListener.java           Notificaciones de progreso
 │   ├── GrabadoraService.java         Graba mouse, teclado o ambos
-│   └── ReproductorService.java       Reproduce grabaciones con Robot
+│   ├── ReproductorService.java       Reproduce grabaciones con Robot
+│   └── TecleadorService.java         Lógica del autoteclado (Robot + hilo)
 └── ui/
     ├── VentanaPrincipal.java         Ventana con pestañas de modos
     ├── ModoPanel.java                Contrato de cada pestaña
     ├── PanelModo.java                Base con lo común de las pestañas
     ├── PanelAutoclicker.java         Pestaña Autoclicker
+    ├── PanelAutoteclado.java         Pestaña Autoteclado
     ├── PanelMacro.java               Pestañas de grabación (Mouse, Teclado, Mouse + Teclado)
     ├── ModoGrabacion.java            Textos, claves, atajos y servicios de cada pestaña de grabación
     ├── AtajoConfigurable.java        Atajo + selector + preferencias
