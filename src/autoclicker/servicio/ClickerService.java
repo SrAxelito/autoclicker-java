@@ -38,6 +38,8 @@ public class ClickerService {
     private static final long PAUSA_DOBLE_CLIC_MAX_MS = 40;
     /** Cuánto se espera a que termine el hilo de la sesión anterior antes de rendirse. */
     private static final long ESPERA_HILO_ANTERIOR_MS = 200;
+    /** Intervalo de sondeo cuando la sesión está en pausa para comprobar el retorno del cursor. */
+    private static final long PASO_REVISION_PAUSA_MS = 50;
 
     private final Robot robot;
     private final Function<Integer, UbicacionCursor> creadorUbicacion;
@@ -151,23 +153,30 @@ public class ClickerService {
                     listener.alCambiarEstado("Clicando...");
                 }
 
-                if (decision.puedeActuar()) {
-                    clic(mascara, pausaPresionMs);
-                    if (config.dobleClic()) {
-                        if (pausaDobleMs > 0) Thread.sleep(pausaDobleMs);
-                        clic(mascara, pausaPresionMs);
-                    }
-                    hechos = clics.incrementAndGet();
-
-                    // Al llegar al último clic no hay nada que esperar
-                    if (!config.esInfinito() && hechos >= config.maxClics()) break;
+                if (!decision.puedeActuar()) {
+                    Thread.sleep(PASO_REVISION_PAUSA_MS);
+                    continue;
                 }
+
+                if (decision.cambio() == FiltroMonitor.CambioEstado.REANUDADO) {
+                    siguiente = System.nanoTime();
+                }
+
+                clic(mascara, pausaPresionMs);
+                if (config.dobleClic()) {
+                    if (pausaDobleMs > 0) Thread.sleep(pausaDobleMs);
+                    clic(mascara, pausaPresionMs);
+                }
+                hechos = clics.incrementAndGet();
+
+                // Al llegar al último clic no hay nada que esperar
+                if (!config.esInfinito() && hechos >= config.maxClics()) break;
 
                 siguiente += intervaloNs;
                 if (siguiente - System.nanoTime() > 0) {
                     esperarHasta(siguiente);
                 } else {
-                    // El clic tardó más que el intervalo (o se omitió y pasó el tiempo): no se acumula "deuda" ni se
+                    // El clic tardó más que el intervalo: no se acumula "deuda" ni se
                     // disparan clics seguidos para recuperar el tiempo perdido.
                     siguiente = System.nanoTime();
                 }

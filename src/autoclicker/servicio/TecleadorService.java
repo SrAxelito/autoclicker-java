@@ -37,6 +37,8 @@ public class TecleadorService {
     private static final long PAUSA_PRESION_MAX_MS = 30;
     /** Cuánto se espera a que termine el hilo de la sesión anterior antes de rendirse. */
     private static final long ESPERA_HILO_ANTERIOR_MS = 200;
+    /** Intervalo de sondeo cuando la sesión está en pausa para comprobar el retorno del cursor. */
+    private static final long PASO_REVISION_PAUSA_MS = 50;
 
     private final Robot robot;
     private final Function<Integer, UbicacionCursor> creadorUbicacion;
@@ -168,11 +170,19 @@ public class TecleadorService {
                     listener.alCambiarEstado("Pulsando...");
                 }
 
-                if (decision.puedeActuar()) {
-                    pulsar(config, codigoJava, pausaPresionMs);
-                    hechos = pulsaciones.incrementAndGet();
-                    if (!config.esInfinito() && hechos >= config.repeticiones()) break;
+                if (!decision.puedeActuar()) {
+                    Thread.sleep(PASO_REVISION_PAUSA_MS);
+                    continue;
                 }
+
+                if (decision.cambio() == FiltroMonitor.CambioEstado.REANUDADO) {
+                    siguiente = System.nanoTime();
+                }
+
+                pulsar(config, codigoJava, pausaPresionMs);
+                hechos = pulsaciones.incrementAndGet();
+
+                if (!config.esInfinito() && hechos >= config.repeticiones()) break;
 
                 siguiente += intervaloNs;
                 if (siguiente - System.nanoTime() > 0) {
