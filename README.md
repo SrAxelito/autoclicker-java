@@ -80,8 +80,8 @@ La aplicación se estructura en cinco pestañas modulares e independientes. Para
 
 | Modo | Funcionalidad Principal | Dispositivos Involucrados | Atajos Globales Predeterminados |
 | :--- | :--- | :---: | :---: |
-| **Autoclicker** | Disparo de clics continuos a alta velocidad en la posición actual del cursor, con soporte de simple/doble clic (mínimo 10 ms / 100 clics por segundo, 20 ms con doble clic y presión mínima de 5 ms) y cuenta regresiva. | Mouse | <kbd>F6</kbd> Iniciar / Detener |
-| **Autoteclado** | Pulsa una tecla o combinación (Ctrl, Alt, Shift) de forma repetida, con intervalo, espera inicial y repeticiones. | Teclado | <kbd>F6</kbd> Iniciar / Detener |
+| **Autoclicker** | Disparo de clics continuos a alta velocidad en la posición del cursor, con soporte de simple/doble clic (mínimo 10 ms / 100 clics por segundo, 20 ms con doble clic y presión de 5 ms), cuenta regresiva y opción de **Monitor activo** (pausa la sesión si el cursor pasa a otra pantalla; no actúa en segundo plano). | Mouse | <kbd>F6</kbd> Iniciar / Detener |
+| **Autoteclado** | Pulsa una tecla o combinación (Ctrl, Alt, Shift) de forma repetida, con intervalo, espera inicial, repeticiones y opción de **Monitor activo** (pausa la sesión según la posición del cursor en pantalla; las teclas van a la ventana activa). | Teclado | <kbd>F6</kbd> Iniciar / Detener |
 | **Grabador de Mouse** | Captura y reproducción fiel de cinemática: coordenadas de movimiento, rueda de scroll y eventos de presión/liberación. | Mouse | <kbd>F7</kbd> Grabar · <kbd>F8</kbd> Reproducir |
 | **Grabador de Teclado** | Captura precisa de pulsaciones de teclas individuales, modificadores sostenidos y combinaciones complejas. | Teclado | <kbd>F9</kbd> Grabar · <kbd>F10</kbd> Reproducir |
 | **Mouse + Teclado** | Automatización combinada y sincronizada de periféricos para macros completas en flujos de trabajo avanzados. | Mouse + Teclado | <kbd>F11</kbd> Grabar · <kbd>F12</kbd> Reproducir |
@@ -197,9 +197,12 @@ src/autoclicker/
 │   ├── ConversorTeclas.java                 # Mapeo y traducción de códigos JNativeHook a eventos de KeyEvent / Robot
 │   ├── EntradaListener.java                 # Interfaz de escucha para eventos de entrada con timestamp
 │   ├── EstadoListener.java                  # Interfaz reactiva para notificaciones de progreso de automatización
+│   ├── FiltroMonitor.java                   # Lógica de pausa y reanudación con retardo de 500 ms al volver de otro monitor
 │   ├── GrabadoraService.java                # Lógica de captura y balanceo de eventos pendientes de liberación
 │   ├── ReproductorService.java              # Motor de reproducción de eventos cinemáticos con java.awt.Robot
-│   └── TecleadorService.java                # Motor de pulsaciones continuas de teclado con Robot y liberación garantizada
+│   ├── TecleadorService.java                # Motor de pulsaciones continuas de teclado con Robot y liberación garantizada
+│   ├── UbicacionCursor.java                 # Contrato desacoplado para consultar si el cursor está en el monitor objetivo
+│   └── UbicacionCursorAwt.java              # Verificación de pantalla mediante AWT comparando el GraphicsDevice
 └── ui/                                      # Capa de presentación gráfica basada en Swing
     ├── VentanaPrincipal.java                # Ventana raíz, gestión de pestañas y orquestación de servicios
     ├── ModoPanel.java                       # Contrato de ciclo de vida para paneles de modo
@@ -211,6 +214,7 @@ src/autoclicker/
     ├── AtajoConfigurable.java               # Vinculación bidireccional entre UI, atajo y preferencias
     ├── Diseno.java                          # Helpers de composición gráfica, márgenes y alineación
     ├── DialogoOpciones.java                 # Ventana modal de configuración y selección de temas
+    ├── SelectorMonitor.java                 # Selector segmentado de monitor con detalle de resoluciones reales
     ├── tema/                                # Sistema de diseño visual y paletas cromáticas
     │   ├── Paleta.java                      # Contrato de colores para fondos, tarjetas, bordes y acentos
     │   ├── Tema.java                        # Gestor de tema activo, tipografías del sistema y métricas
