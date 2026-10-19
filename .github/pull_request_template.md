@@ -24,7 +24,7 @@ Describe brevemente el propósito de este Pull Request, qué problema resuelve o
 
 Indica los módulos o capas impactadas por los cambios:
 
-- [ ] **UI / Presentación:** (`autoclicker.vista`)
+- [ ] **UI / Presentación:** (`autoclicker.ui`)
 - [ ] **Dominio / Modelo:** (`autoclicker.modelo`)
 - [ ] **Servicios / Lógica de negocio:** (`autoclicker.servicio`)
 - [ ] **Persistencia / Configuración:** (`autoclicker.persistencia`)
