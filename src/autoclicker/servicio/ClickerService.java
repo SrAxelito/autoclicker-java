@@ -9,6 +9,7 @@ import java.awt.event.InputEvent;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 /**
  * Lógica del autoclicker: controla el mouse con Robot en un hilo aparte.
@@ -37,9 +38,13 @@ public class ClickerService {
     private static final long PAUSA_DOBLE_CLIC_MAX_MS = 40;
     /** Cuánto se espera a que termine el hilo de la sesión anterior antes de rendirse. */
     private static final long ESPERA_HILO_ANTERIOR_MS = 200;
+    /** Intervalo de sondeo cuando la sesión está en pausa para comprobar el retorno del cursor. */
+    private static final long PASO_REVISION_PAUSA_MS = 50;
 
     private final Robot robot;
+    private final Function<Integer, UbicacionCursor> creadorUbicacion;
     private final AtomicBoolean corriendo = new AtomicBoolean(false);
+    private final AtomicBoolean pausado = new AtomicBoolean(false);
     private final AtomicInteger clics = new AtomicInteger();
     private volatile EstadoListener listener = EstadoListener.NINGUNO;
     private Thread hilo;
@@ -50,7 +55,18 @@ public class ClickerService {
 
     /** Permite inyectar un Robot (útil para pruebas). */
     public ClickerService(Robot robot) {
+        this(robot, UbicacionCursorAwt::new);
+    }
+
+    /** Permite inyectar un Robot y una ubicación de cursor específica (útil para pruebas). */
+    public ClickerService(Robot robot, UbicacionCursor ubicacion) {
+        this(robot, monitor -> ubicacion);
+    }
+
+    /** Permite inyectar un Robot y una fábrica de ubicaciones de cursor. */
+    public ClickerService(Robot robot, Function<Integer, UbicacionCursor> creadorUbicacion) {
         this.robot = robot;
+        this.creadorUbicacion = (creadorUbicacion != null) ? creadorUbicacion : UbicacionCursorAwt::new;
     }
 
     public void setListener(EstadoListener listener) {
@@ -63,6 +79,11 @@ public class ClickerService {
      */
     public boolean estaCorriendo() {
         return corriendo.get();
+    }
+
+    /** true si la sesión está corriendo pero temporalmente en pausa por estar fuera del monitor. */
+    public boolean estaPausado() {
+        return pausado.get();
     }
 
     /** Clics (o dobles clics) hechos en la sesión actual o en la última. Se puede leer desde cualquier hilo. */
@@ -84,6 +105,7 @@ public class ClickerService {
             if (hilo.isAlive()) return false;
         }
         clics.set(0);
+        pausado.set(false);
         corriendo.set(true);
         hilo = new Thread(() -> ejecutar(config), "hilo-clics");
         hilo.setDaemon(true);
@@ -93,6 +115,7 @@ public class ClickerService {
 
     public synchronized void detener() {
         corriendo.set(false);
+        pausado.set(false);
         if (hilo != null) hilo.interrupt();
     }
 
@@ -101,6 +124,7 @@ public class ClickerService {
     private void ejecutar(ConfiguracionClics config) {
         int hechos = 0;
         String mensajeFinal = "Detenido";
+        pausado.set(false);
         try {
             for (int s = config.esperaSegundos(); s > 0 && corriendo.get(); s--) {
                 listener.alCambiarEstado("Empieza en " + s + "...");
@@ -114,7 +138,30 @@ public class ClickerService {
             long intervaloNs = TimeUnit.MILLISECONDS.toNanos(config.intervaloMs());
             long siguiente = System.nanoTime();   // instante en que debe empezar el próximo clic
 
+            UbicacionCursor ubicacion = (config.monitor() >= 0)
+                    ? creadorUbicacion.apply(config.monitor())
+                    : () -> true;
+            FiltroMonitor filtro = new FiltroMonitor(config.monitor(), ubicacion);
+
             while (corriendo.get() && (config.esInfinito() || hechos < config.maxClics())) {
+                FiltroMonitor.Decision decision = filtro.evaluar(System.nanoTime());
+                if (decision.cambio() == FiltroMonitor.CambioEstado.PAUSADO) {
+                    pausado.set(true);
+                    listener.alCambiarEstado(filtro.mensajePausa());
+                } else if (decision.cambio() == FiltroMonitor.CambioEstado.REANUDADO) {
+                    pausado.set(false);
+                    listener.alCambiarEstado("Clicando...");
+                }
+
+                if (!decision.puedeActuar()) {
+                    Thread.sleep(PASO_REVISION_PAUSA_MS);
+                    continue;
+                }
+
+                if (decision.cambio() == FiltroMonitor.CambioEstado.REANUDADO) {
+                    siguiente = System.nanoTime();
+                }
+
                 clic(mascara, pausaPresionMs);
                 if (config.dobleClic()) {
                     if (pausaDobleMs > 0) Thread.sleep(pausaDobleMs);
@@ -144,6 +191,7 @@ public class ClickerService {
             Thread.currentThread().interrupt();
             mensajeFinal = "Detenido — " + hechos + " clics";
         } finally {
+            pausado.set(false);
             corriendo.set(false);
             listener.alTerminar(mensajeFinal);
         }

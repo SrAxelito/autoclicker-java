@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 /**
  * Lógica del autoteclado: presiona una tecla o combinación con Robot en un hilo aparte.
@@ -36,9 +37,13 @@ public class TecleadorService {
     private static final long PAUSA_PRESION_MAX_MS = 30;
     /** Cuánto se espera a que termine el hilo de la sesión anterior antes de rendirse. */
     private static final long ESPERA_HILO_ANTERIOR_MS = 200;
+    /** Intervalo de sondeo cuando la sesión está en pausa para comprobar el retorno del cursor. */
+    private static final long PASO_REVISION_PAUSA_MS = 50;
 
     private final Robot robot;
+    private final Function<Integer, UbicacionCursor> creadorUbicacion;
     private final AtomicBoolean corriendo = new AtomicBoolean(false);
+    private final AtomicBoolean pausado = new AtomicBoolean(false);
     private final AtomicInteger pulsaciones = new AtomicInteger();
     private volatile EstadoListener listener = EstadoListener.NINGUNO;
     private Thread hilo;
@@ -52,7 +57,18 @@ public class TecleadorService {
 
     /** Permite inyectar un Robot (útil para pruebas). */
     public TecleadorService(Robot robot) {
+        this(robot, UbicacionCursorAwt::new);
+    }
+
+    /** Permite inyectar un Robot y una ubicación de cursor específica (útil para pruebas). */
+    public TecleadorService(Robot robot, UbicacionCursor ubicacion) {
+        this(robot, monitor -> ubicacion);
+    }
+
+    /** Permite inyectar un Robot y una fábrica de ubicaciones de cursor. */
+    public TecleadorService(Robot robot, Function<Integer, UbicacionCursor> creadorUbicacion) {
         this.robot = robot;
+        this.creadorUbicacion = (creadorUbicacion != null) ? creadorUbicacion : UbicacionCursorAwt::new;
     }
 
     public void setListener(EstadoListener listener) {
@@ -65,6 +81,11 @@ public class TecleadorService {
      */
     public boolean estaCorriendo() {
         return corriendo.get();
+    }
+
+    /** true si la sesión está corriendo pero temporalmente en pausa por estar fuera del monitor. */
+    public boolean estaPausado() {
+        return pausado.get();
     }
 
     /** Pulsaciones hechas en la sesión actual o en la última. Se puede leer desde cualquier hilo. */
@@ -84,6 +105,7 @@ public class TecleadorService {
             if (hilo.isAlive()) return false;
         }
         pulsaciones.set(0);
+        pausado.set(false);
         corriendo.set(true);
         hilo = new Thread(() -> ejecutar(config), "hilo-tecleo");
         hilo.setDaemon(true);
@@ -93,6 +115,7 @@ public class TecleadorService {
 
     public synchronized void detener() {
         corriendo.set(false);
+        pausado.set(false);
         if (hilo != null) hilo.interrupt();
     }
 
@@ -114,6 +137,7 @@ public class TecleadorService {
     private void ejecutar(ConfiguracionTecleo config) {
         int hechos = 0;
         String mensajeFinal = "Detenido";
+        pausado.set(false);
         try {
             for (int s = config.esperaSegundos(); s > 0 && corriendo.get(); s--) {
                 listener.alCambiarEstado("Empieza en " + s + "...");
@@ -131,7 +155,30 @@ public class TecleadorService {
             long intervaloNs = TimeUnit.MILLISECONDS.toNanos(config.intervaloMs());
             long siguiente = System.nanoTime();
 
+            UbicacionCursor ubicacion = (config.monitor() >= 0)
+                    ? creadorUbicacion.apply(config.monitor())
+                    : () -> true;
+            FiltroMonitor filtro = new FiltroMonitor(config.monitor(), ubicacion);
+
             while (corriendo.get() && (config.esInfinito() || hechos < config.repeticiones())) {
+                FiltroMonitor.Decision decision = filtro.evaluar(System.nanoTime());
+                if (decision.cambio() == FiltroMonitor.CambioEstado.PAUSADO) {
+                    pausado.set(true);
+                    listener.alCambiarEstado(filtro.mensajePausa());
+                } else if (decision.cambio() == FiltroMonitor.CambioEstado.REANUDADO) {
+                    pausado.set(false);
+                    listener.alCambiarEstado("Pulsando...");
+                }
+
+                if (!decision.puedeActuar()) {
+                    Thread.sleep(PASO_REVISION_PAUSA_MS);
+                    continue;
+                }
+
+                if (decision.cambio() == FiltroMonitor.CambioEstado.REANUDADO) {
+                    siguiente = System.nanoTime();
+                }
+
                 pulsar(config, codigoJava, pausaPresionMs);
                 hechos = pulsaciones.incrementAndGet();
 
@@ -155,6 +202,7 @@ public class TecleadorService {
             mensajeFinal = "Detenido — " + hechos + (hechos == 1 ? " pulsación" : " pulsaciones");
         } finally {
             soltarTodo();
+            pausado.set(false);
             corriendo.set(false);
             listener.alTerminar(mensajeFinal);
         }

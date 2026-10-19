@@ -10,14 +10,21 @@ import java.util.Objects;
  * @param intervaloMs     milisegundos entre el inicio de una pulsación y el siguiente (mínimo 10)
  * @param repeticiones    cantidad de pulsaciones a realizar; 0 significa infinito
  * @param esperaSegundos  cuenta regresiva antes de empezar
+ * @param monitor         monitor objetivo (-1 = todos, 0 = Monitor 1, etc.)
  */
 public record ConfiguracionTecleo(
         Atajo tecla,
         long intervaloMs,
         int repeticiones,
-        int esperaSegundos) {
+        int esperaSegundos,
+        int monitor) {
 
     public static final long INTERVALO_MINIMO_MS = 10;
+    public static final int TODOS_LOS_MONITORES = ConfiguracionClics.TODOS_LOS_MONITORES;
+
+    public ConfiguracionTecleo(Atajo tecla, long intervaloMs, int repeticiones, int esperaSegundos) {
+        this(tecla, intervaloMs, repeticiones, esperaSegundos, TODOS_LOS_MONITORES);
+    }
 
     public ConfiguracionTecleo {
         Objects.requireNonNull(tecla, "Debes elegir una tecla.");
@@ -32,6 +39,9 @@ public record ConfiguracionTecleo(
         }
         if (esperaSegundos < 0) {
             throw new IllegalArgumentException("La espera no puede ser negativa.");
+        }
+        if (monitor < TODOS_LOS_MONITORES) {
+            throw new IllegalArgumentException("El monitor no puede ser menor que " + TODOS_LOS_MONITORES + ".");
         }
     }
 
