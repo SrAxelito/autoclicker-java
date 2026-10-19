@@ -3,6 +3,7 @@ package autoclicker;
 import autoclicker.persistencia.PreferenciasRepository;
 import autoclicker.servicio.AtajoService;
 import autoclicker.servicio.ClickerService;
+import autoclicker.servicio.TecleadorService;
 import autoclicker.ui.ModoGrabacion;
 import autoclicker.ui.VentanaPrincipal;
 import autoclicker.ui.tema.Tema;
@@ -32,19 +33,21 @@ public class Main {
             // Primero lo que puede fallar (Robot lanza AWTException): si falla,
             // todavía no se ha registrado la escucha global, que mantiene viva la JVM.
             ClickerService clicker;
+            TecleadorService tecleador;
             List<ModoGrabacion> grabaciones;
             try {
                 clicker = new ClickerService();
+                tecleador = new TecleadorService();
                 grabaciones = ModoGrabacion.predeterminados();
             } catch (AWTException e) {
-                mostrarError("No se pudo controlar el mouse en este sistema", e);
+                mostrarError("No se pudo controlar el mouse o el teclado en este sistema", e);
                 return;
             }
 
             AtajoService atajos = new AtajoService();
             atajos.iniciar();
             try {
-                new VentanaPrincipal(atajos, preferencias, clicker, grabaciones).setVisible(true);
+                new VentanaPrincipal(atajos, preferencias, clicker, tecleador, grabaciones).setVisible(true);
             } catch (RuntimeException e) {
                 // Sin ventana no hay forma de cerrar el programa: se libera la escucha
                 // global para que el proceso no quede vivo en segundo plano.
