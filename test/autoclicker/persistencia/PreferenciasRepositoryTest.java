@@ -3,6 +3,7 @@ package autoclicker.persistencia;
 import autoclicker.modelo.Atajo;
 import autoclicker.modelo.BotonMouse;
 import autoclicker.modelo.ConfiguracionClics;
+import autoclicker.modelo.ConfiguracionTecleo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,6 +17,8 @@ class PreferenciasRepositoryTest {
 
     private static final ConfiguracionClics PREDETERMINADA =
             new ConfiguracionClics(100, 0, 3, BotonMouse.IZQUIERDO, false);
+    private static final ConfiguracionTecleo PREDETERMINADA_TECLEO =
+            new ConfiguracionTecleo(new Atajo(Atajo.Tipo.TECLA, 57, 0, "Espacio"), 100, 0, 3);
 
     private Preferences nodo;
     private PreferenciasRepository repositorio;
@@ -148,11 +151,24 @@ class PreferenciasRepositoryTest {
     }
 
     @Test
-    void unIntervaloInvalidoSeIgnoraEnLugarDeFallar() {
-        repositorio.guardarConfiguracionClics(new ConfiguracionClics(250, 40, 0, BotonMouse.DERECHO, true));
-        nodo.putLong("clics.intervaloMs", 0);
+    void unIntervaloMenorAlMinimoSeSubeAlMinimoConservandoLosDemasParametros() {
+        repositorio.guardarConfiguracionClics(new ConfiguracionClics(250, 40, 5, BotonMouse.DERECHO, false));
+        nodo.putLong("clics.intervaloMs", 1);
 
-        assertEquals(PREDETERMINADA, repositorio.cargarConfiguracionClics(PREDETERMINADA));
+        assertEquals(new ConfiguracionClics(10, 40, 5, BotonMouse.DERECHO, false),
+                repositorio.cargarConfiguracionClics(PREDETERMINADA));
+
+        nodo.putBoolean("clics.dobleClic", true);
+        assertEquals(new ConfiguracionClics(20, 40, 5, BotonMouse.DERECHO, true),
+                repositorio.cargarConfiguracionClics(PREDETERMINADA));
+
+        nodo.putBoolean("clics.dobleClic", false);
+        nodo.putLong("clics.intervaloMs", 0);
+        assertEquals(new ConfiguracionClics(10, 40, 5, BotonMouse.DERECHO, false),
+                repositorio.cargarConfiguracionClics(PREDETERMINADA));
+        nodo.putLong("clics.intervaloMs", -15);
+        assertEquals(new ConfiguracionClics(10, 40, 5, BotonMouse.DERECHO, false),
+                repositorio.cargarConfiguracionClics(PREDETERMINADA));
     }
 
     @Test
@@ -200,5 +216,106 @@ class PreferenciasRepositoryTest {
         nodo.putInt("repeticiones.mouse", -4);
 
         assertEquals(1, repositorio.cargarRepeticiones("repeticiones.mouse", 1));
+    }
+
+    // ---- Parámetros del autoteclado ----
+
+    @Test
+    void sinNadaGuardadoLaConfiguracionDeTecleoEsLaPredeterminada() {
+        assertEquals(PREDETERMINADA_TECLEO, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+    }
+
+    @Test
+    void laConfiguracionDeTecleoSeGuardaYSeRecupera() {
+        Atajo ctrlV = new Atajo(Atajo.Tipo.TECLA, 47, Atajo.CTRL, "Ctrl + V");
+        ConfiguracionTecleo guardada = new ConfiguracionTecleo(ctrlV, 50, 10, 1);
+
+        repositorio.guardarConfiguracionTecleo(guardada);
+
+        assertEquals(guardada, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+    }
+
+    @Test
+    void datosCorruptosVuelvenLaConfiguracionPredeterminada() {
+        Atajo ctrlV = new Atajo(Atajo.Tipo.TECLA, 47, Atajo.CTRL, "Ctrl + V");
+        repositorio.guardarConfiguracionTecleo(new ConfiguracionTecleo(ctrlV, 50, 10, 1));
+
+        // Tecla de tipo MOUSE en tecleo: corrupto
+        nodo.put("tecleo.tecla.tipo", "MOUSE");
+        assertEquals(PREDETERMINADA_TECLEO, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+
+        // Repeticiones negativas: corrupto
+        nodo.put("tecleo.tecla.tipo", "TECLA");
+        nodo.putInt("tecleo.repeticiones", -5);
+        assertEquals(PREDETERMINADA_TECLEO, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+
+        // Espera negativa: corrupto
+        nodo.putInt("tecleo.repeticiones", 0);
+        nodo.putInt("tecleo.esperaSegundos", -1);
+        assertEquals(PREDETERMINADA_TECLEO, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+    }
+
+    @Test
+    void unIntervaloDeTecleoMenorAlMinimoSeSubeAlMinimo() {
+        Atajo espacio = new Atajo(Atajo.Tipo.TECLA, 57, 0, "Espacio");
+        repositorio.guardarConfiguracionTecleo(new ConfiguracionTecleo(espacio, 50, 10, 1));
+        nodo.putLong("tecleo.intervaloMs", 1);
+
+        assertEquals(new ConfiguracionTecleo(espacio, 10, 10, 1),
+                repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+
+        nodo.putLong("tecleo.intervaloMs", 0);
+        assertEquals(new ConfiguracionTecleo(espacio, 10, 10, 1),
+                repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+
+        nodo.putLong("tecleo.intervaloMs", -10);
+        assertEquals(new ConfiguracionTecleo(espacio, 10, 10, 1),
+                repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+    }
+
+    // ---- Monitor activo ----
+
+    @Test
+    void elMonitorDeCadaConfiguracionSeGuardaYSeRecupera() {
+        ConfiguracionClics clics = new ConfiguracionClics(100, 0, 3, BotonMouse.IZQUIERDO, false, 1);
+        repositorio.guardarConfiguracionClics(clics);
+        assertEquals(1, repositorio.cargarConfiguracionClics(PREDETERMINADA).monitor());
+
+        Atajo espacio = new Atajo(Atajo.Tipo.TECLA, 57, 0, "Espacio");
+        ConfiguracionTecleo tecleo = new ConfiguracionTecleo(espacio, 100, 0, 3, 2);
+        repositorio.guardarConfiguracionTecleo(tecleo);
+        assertEquals(2, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO).monitor());
+    }
+
+    @Test
+    void sinDatoDeMonitorVuelveElPredeterminado() {
+        assertEquals(ConfiguracionClics.TODOS_LOS_MONITORES,
+                repositorio.cargarConfiguracionClics(PREDETERMINADA).monitor());
+        assertEquals(ConfiguracionClics.TODOS_LOS_MONITORES,
+                repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO).monitor());
+    }
+
+    @Test
+    void unValorMenorQueMenosUnoVuelveElPredeterminado() {
+        nodo.putInt("clics.monitor", -2);
+        assertEquals(ConfiguracionClics.TODOS_LOS_MONITORES,
+                repositorio.cargarConfiguracionClics(PREDETERMINADA).monitor());
+
+        nodo.putInt("tecleo.monitor", -5);
+        assertEquals(ConfiguracionClics.TODOS_LOS_MONITORES,
+                repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO).monitor());
+    }
+
+    @Test
+    void clicsMonitorYTecleoMonitorNoSeMezclan() {
+        ConfiguracionClics clics = new ConfiguracionClics(100, 0, 3, BotonMouse.IZQUIERDO, false, 0);
+        Atajo espacio = new Atajo(Atajo.Tipo.TECLA, 57, 0, "Espacio");
+        ConfiguracionTecleo tecleo = new ConfiguracionTecleo(espacio, 100, 0, 3, 1);
+
+        repositorio.guardarConfiguracionClics(clics);
+        repositorio.guardarConfiguracionTecleo(tecleo);
+
+        assertEquals(0, repositorio.cargarConfiguracionClics(PREDETERMINADA).monitor());
+        assertEquals(1, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO).monitor());
     }
 }

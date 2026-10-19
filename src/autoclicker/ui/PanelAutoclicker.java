@@ -32,14 +32,15 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
     private final AtajoConfigurable atajo;
 
     // Los valores con los que nacen los campos son los predeterminados de la primera vez
-    private final CampoNumerico intervaloCampo = new CampoNumerico(
-            100, (int) ConfiguracionClics.INTERVALO_MINIMO_MS, 600_000, 10, "ms");
+    private final CampoNumerico intervaloCampo =
+            new CampoNumerico(100, (int) ConfiguracionClics.INTERVALO_MINIMO_MS, 600_000, 10, "ms");
     private final CampoNumerico esperaCampo    = new CampoNumerico(3, 0, 60, 1, "s");
     private final CampoNumerico clicsCampo     = new CampoNumerico(0, 0, 10_000_000, 1, "clics");
     private final ControlSegmentado<BotonMouse> botonControl =
             new ControlSegmentado<>(BotonMouse.values());
     private final ControlSegmentado<Boolean> tipoControl =
             new ControlSegmentado<>(new Boolean[]{false, true}, new String[]{"Simple", "Doble"});
+    private final SelectorMonitor selectorMonitor = new SelectorMonitor();
 
     private final BotonModerno iniciarBtn = new BotonModerno("Iniciar", BotonModerno.Variante.PRIMARIO);
     private final BotonModerno detenerBtn = new BotonModerno("Detener", BotonModerno.Variante.PELIGRO);
@@ -52,7 +53,12 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
         this.preferencias = preferencias;
         this.atajo = new AtajoConfigurable(CLAVE_ATAJO, AtajoService.F6, this::alternar, atajos, preferencias);
         atajo.setAlCambiar(this::mostrarAtajo);
-        mostrarConfiguracion(preferencias.cargarConfiguracionClics(leerConfiguracion()));
+        tipoControl.alCambiar(doble -> {
+            if (Boolean.TRUE.equals(doble) && intervaloCampo.getValor() < ConfiguracionClics.INTERVALO_MINIMO_DOBLE_MS) {
+                intervaloCampo.setValor((int) ConfiguracionClics.INTERVALO_MINIMO_DOBLE_MS);
+            }
+        });
+        mostrarConfiguracion(preferencias.cargarConfiguracionClics(leerConfiguracionParaGuardar()));
 
         Diseno.Pila opciones = pilaDeOpciones();
         opciones.agregar(Diseno.dosColumnas(
@@ -62,6 +68,10 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
         opciones.agregar(Diseno.dosColumnas(
                 Diseno.tarjeta("Tipo de clic", tipoControl, null),
                 Diseno.tarjeta("Repeticiones", clicsCampo, "0 = repetir hasta detener")), 12);
+        if (selectorMonitor.hayMultiplesMonitores()) {
+            opciones.agregar(Diseno.tarjeta("Monitor activo", selectorMonitor,
+                    "En los demás monitores los clics se pausan"), 12);
+        }
         opciones.agregar(Diseno.tarjeta("Atajo para iniciar / detener", atajo.selector(), notaAtajo()), 12);
 
         Diseno.Pila pie = pilaDelPie();
@@ -89,19 +99,31 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
 
     @Override
     public void guardarParametros() {
-        preferencias.guardarConfiguracionClics(leerConfiguracion());
+        preferencias.guardarConfiguracionClics(leerConfiguracionParaGuardar());
     }
 
     // ---- Parámetros ----
 
-    /** Arma la configuración con lo que hay ahora mismo en los campos. */
-    private ConfiguracionClics leerConfiguracion() {
+    /** Configuración para ejecutar la sesión: usa el monitor activo si está disponible, o "Todos". */
+    private ConfiguracionClics leerConfiguracionParaTrabajar() {
         return new ConfiguracionClics(
                 intervaloCampo.getValor(),
                 clicsCampo.getValor(),
                 esperaCampo.getValor(),
                 botonControl.getSeleccion(),
-                tipoControl.getSeleccion());
+                tipoControl.getSeleccion(),
+                selectorMonitor.monitorParaTrabajar());
+    }
+
+    /** Configuración para persistir: conserva el último monitor elegido o cargado. */
+    private ConfiguracionClics leerConfiguracionParaGuardar() {
+        return new ConfiguracionClics(
+                intervaloCampo.getValor(),
+                clicsCampo.getValor(),
+                esperaCampo.getValor(),
+                botonControl.getSeleccion(),
+                tipoControl.getSeleccion(),
+                selectorMonitor.monitorParaGuardar());
     }
 
     /** Pone una configuración en los campos; cada campo ajusta el valor a sus propios límites. */
@@ -111,6 +133,7 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
         esperaCampo.setValor(config.esperaSegundos());
         botonControl.setSeleccion(config.boton());
         tipoControl.setSeleccion(config.dobleClic());
+        selectorMonitor.setMonitor(config.monitor());
     }
 
     // ---- Acciones ----
@@ -118,14 +141,14 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
     private void iniciar() {
         if (atajos.estaCapturando()) atajos.cancelarCaptura();
         try {
-            ConfiguracionClics config = leerConfiguracion();
+            ConfiguracionClics configTrabajo = leerConfiguracionParaTrabajar();
             // Si ya había una sesión en marcha no se inició nada y no habrá aviso de
             // final: la interfaz se deja como está.
-            if (!servicio.iniciar(config)) return;
+            if (!servicio.iniciar(configTrabajo)) return;
             relojProgreso.start();
             actualizarControles();
             // Se guarda aquí además de al cerrar, por si el programa no se cierra con la X.
-            preferencias.guardarConfiguracionClics(config);
+            preferencias.guardarConfiguracionClics(leerConfiguracionParaGuardar());
         } catch (IllegalArgumentException | NullPointerException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Configuración inválida", JOptionPane.WARNING_MESSAGE);
@@ -161,6 +184,7 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
 
     /** Se ejecuta en el hilo de Swing: lee el contador del servicio en lugar de recibir un aviso por clic. */
     private void mostrarProgreso() {
+        if (servicio.estaPausado()) return;
         int hechos = servicio.clicsHechos();
         if (hechos > 0 && servicio.estaCorriendo()) {
             estado.setEstado("Clicando... " + hechos + " clics", IndicadorEstado.Tono.ACTIVO);
@@ -196,6 +220,7 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
         clicsCampo.setEnabled(libre);
         botonControl.setEnabled(libre);
         tipoControl.setEnabled(libre);
+        selectorMonitor.setEnabled(libre);
         atajo.setEnabled(libre);
         avisarCambioDeOcupado();
     }

@@ -264,6 +264,23 @@ class AtajoServiceTest {
         assertEquals(NativeMouseEvent.BUTTON5, capturados.get(0).codigo());
     }
 
+    @Test
+    void laCapturaDeSoloTeclasRechazaBotonesLaterales() {
+        List<Atajo> capturados = new ArrayList<>();
+        servicio.capturar(true, capturados::add);
+
+        presionarBoton(NativeMouseEvent.BUTTON4);
+        presionarBoton(NativeMouseEvent.BUTTON5);
+        assertTrue(servicio.estaCapturando(), "los botones laterales deben ignorarse cuando solo se aceptan teclas");
+
+        presionar(F8);
+
+        assertFalse(servicio.estaCapturando());
+        assertEquals(1, capturados.size());
+        assertEquals(Atajo.Tipo.TECLA, capturados.get(0).tipo());
+        assertEquals(F8, capturados.get(0).codigo());
+    }
+
     // ---- Mensajes de fallo ----
 
     @Test

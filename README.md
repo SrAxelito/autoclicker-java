@@ -4,7 +4,7 @@
 
 ### Automatización de escritorio multiplataforma de alta precisión para clics, mouse y teclado
 
-[![Versión](https://img.shields.io/badge/versión-v1.7.0-0969da?style=flat-square)](https://github.com/SrAxelito/autoclicker-java/releases/latest)
+[![Versión](https://img.shields.io/badge/versión-v1.8.0-0969da?style=flat-square)](https://github.com/SrAxelito/autoclicker-java/releases/latest)
 [![Java](https://img.shields.io/badge/Java-21%2B-ED8B00?style=flat-square&logo=openjdk&logoColor=white)](https://adoptium.net/)
 [![GUI](https://img.shields.io/badge/GUI-Swing%20%2F%20AWT-5382a1?style=flat-square&logo=java&logoColor=white)](https://docs.oracle.com/en/java/javase/21/docs/api/java.desktop/javax/swing/package-summary.html)
 [![JNativeHook](https://img.shields.io/badge/JNativeHook-2.2.2-2ea44f?style=flat-square)](https://github.com/kwhat/jnativehook)
@@ -76,20 +76,25 @@ flowchart LR
 
 ## 🎛️ Visión General y Modos de Operación
 
-La aplicación se estructura en cuatro pestañas modulares e independientes. Para garantizar máxima ergonomía y evitar disparos accidentales, los atajos globales asignados a cada función responden exclusivamente cuando su respectiva pestaña se encuentra seleccionada.
+La aplicación se estructura en cinco pestañas modulares e independientes. Para garantizar máxima ergonomía y evitar disparos accidentales, los atajos globales asignados a cada función responden exclusivamente cuando su respectiva pestaña se encuentra seleccionada.
 
 | Modo | Funcionalidad Principal | Dispositivos Involucrados | Atajos Globales Predeterminados |
 | :--- | :--- | :---: | :---: |
-| **Autoclicker** | Disparo de clics continuos a alta velocidad en la posición actual del cursor, con soporte de simple/doble clic y cuenta regresiva. | Mouse | <kbd>F6</kbd> Iniciar / Detener |
+| **Autoclicker** | Disparo de clics continuos a alta velocidad en la posición del cursor, con soporte de simple/doble clic (mínimo 10 ms / 100 clics por segundo, 20 ms con doble clic y presión de 5 ms), cuenta regresiva y opción de **Monitor activo** (pausa la sesión si el cursor pasa a otra pantalla; no actúa en segundo plano). | Mouse | <kbd>F6</kbd> Iniciar / Detener |
+| **Autoteclado** | Pulsa una tecla o combinación (Ctrl, Alt, Shift) de forma repetida, con intervalo, espera inicial, repeticiones y opción de **Monitor activo** (pausa la sesión según la posición del cursor en pantalla; las teclas van a la ventana activa). | Teclado | <kbd>F6</kbd> Iniciar / Detener |
 | **Grabador de Mouse** | Captura y reproducción fiel de cinemática: coordenadas de movimiento, rueda de scroll y eventos de presión/liberación. | Mouse | <kbd>F7</kbd> Grabar · <kbd>F8</kbd> Reproducir |
 | **Grabador de Teclado** | Captura precisa de pulsaciones de teclas individuales, modificadores sostenidos y combinaciones complejas. | Teclado | <kbd>F9</kbd> Grabar · <kbd>F10</kbd> Reproducir |
 | **Mouse + Teclado** | Automatización combinada y sincronizada de periféricos para macros completas en flujos de trabajo avanzados. | Mouse + Teclado | <kbd>F11</kbd> Grabar · <kbd>F12</kbd> Reproducir |
 
 ### ✨ Aspectos Destacados de las Últimas Versiones
 
+- **v1.8.0 — Autoteclado, Monitor Activo y Optimización para Juegos:**
+  - **Autoteclado:** Nueva pestaña que pulsa una tecla o combinación (Ctrl, Alt, Shift) de forma repetida, con intervalo, espera inicial, repeticiones y atajo propio; nunca deja teclas presionadas al detener.
+  - **Monitor activo:** En Autoclicker y Autoteclado se elige un monitor; mientras el cursor está en otro, la sesión se pausa y se reanuda medio segundo después de volver. El monitor elegido se recuerda aunque un día no esté conectado.
+  - **Autoclicker más suave para juegos:** Intervalo mínimo de 10 ms (20 ms con doble clic), presión mínima de 5 ms y espera sin espera activa, para no ocupar un núcleo del procesador. Los intervalos guardados más cortos que el mínimo se suben al mínimo sin perder los demás parámetros.
 - **v1.7.0 — Persistencia de Macros y Estabilización de Eventos:**
   - **Serialización en JSON de grabaciones:** Nuevo motor de persistencia mediante `GrabacionRepository`, que permite exportar e importar macros completas a archivos JSON estructurados y legibles sin dependencias externas.
-  - **Umbral de protección contra saturación:** Límite mínimo de cadencia en `10 ms` (`INTERVALO_MINIMO_MS`) con temporización activa para evitar colapso del bucle de mensajes del sistema operativo en videojuegos y motores gráficos de alto rendimiento.
+  - **Umbral de protección contra saturación:** Límite mínimo de cadencia en `10 ms` (100 clics por segundo) y presión mínima de 2 ms para evitar colapso del bucle de mensajes del sistema operativo en videojuegos y motores gráficos de alto rendimiento.
 - **v1.6.1 / v1.6.0 — Interfaz Adaptativa y Ergonomía:**
   - **Scroll inteligente y diseño responsivo:** Integración de `PanelDesplazable` con barras de desplazamiento sutiles y diseño de ventana adaptable para monitores pequeños y laptops, manteniendo los controles de estado y ejecución siempre a la vista.
   - **Atajos configurables con modificadores:** Asignación de cualquier combinación de teclado (<kbd>Ctrl</kbd>, <kbd>Alt</kbd>, <kbd>Shift</kbd>, <kbd>Win</kbd>) o botones laterales del mouse (<kbd>Botón 4</kbd> / <kbd>Botón 5</kbd>).
@@ -108,11 +113,11 @@ El proyecto incluye scripts autónomos diseñados para compilar, empaquetar y va
 
 ```bash
 # En Windows (o doble clic sobre el archivo):
-construir.bat [version]       # Ejemplo: construir.bat 1.7.0
+construir.bat [version]       # Ejemplo: construir.bat 1.8.0
 
 # En macOS y Linux:
 chmod +x construir.sh
-./construir.sh [version]      # Ejemplo: ./construir.sh 1.7.0
+./construir.sh [version]      # Ejemplo: ./construir.sh 1.8.0
 ```
 
 > **Resultado:** Los artefactos generados se sitúan en el directorio `dist/` (comprimidos listos para distribución) y en `build/salida/` (aplicación desempaquetada para validación inmediata).
@@ -147,10 +152,10 @@ La generación sintética de eventos de usuario en `AutoClicker Java` se impleme
 En aplicaciones de alta demanda gráfica y videojuegos (DirectX, Vulkan, OpenGL), el procesamiento de entrada depende de un bucle de despacho de mensajes (`GetMessage` / `PeekMessage` en Win32).
 - **El problema de las ráfagas a <10ms:** Si un autoclicker emite secuencias de presión y liberación con 0 o 1 milisegundo de diferencia, la cola de eventos del sistema operativo se satura antes de que el motor de renderizado complete su frame. Esto provoca acumulación de buffers, pérdida de eventos o el congelamiento total de la entrada del usuario (*input lock*).
 - **Protección de doble capa:**
-  1. `INTERVALO_MINIMO_MS = 10 ms`: Previene que la configuración solicite frecuencias nocivas para el message pump.
-  2. `PAUSA_PRESION_MIN_MS = 2 ms` garantizada: Todo clic físico ejecuta un `robot.mousePress()`, entra en una pausa mínima y luego en un bloque `finally` ejecuta `robot.mouseRelease()`. Esto asegura que el sistema operativo registre con nitidez tanto el flanco de bajada como el flanco de subida del evento.
-- **Temporización híbrida de nanosegundos:**  
-  Para resolver la imprecisión del planificador del sistema operativo con `Thread.sleep` (cuyo jitter típico oscila entre 1 y 2 ms), el servicio `ClickerService` duerme la mayor parte del tiempo con `sleep` y afina los últimos 2 milisegundos (`MARGEN_ESPERA_ACTIVA_NS`) utilizando espera activa calibrada mediante `Thread.onSpinWait()` y `System.nanoTime()`. Además, si un ciclo excede el tiempo estimado, se descarta la deuda acumulada para evitar ráfagas descontroladas compensatorias.
+  1. `INTERVALO_MINIMO_MS = 10 ms` (y `20 ms` con doble clic): Previene que la configuración solicite frecuencias nocivas para el message pump (hasta 100 clics por segundo).
+  2. Presión mínima de `5 ms` garantizada: Todo clic físico ejecuta un `robot.mousePress()`, entra en una pausa mínima de al menos 5 ms y luego en un bloque `finally` ejecuta `robot.mouseRelease()`. Esto asegura que el sistema operativo registre con nitidez tanto el flanco de bajada como el flanco de subida del evento sin perder pulsaciones.
+- **Planificación por instantes sin espera activa:**  
+  A diferencia de esquemas con espera activa que consumen el 100% de un núcleo del procesador, el programa espera durmiendo (`Thread.sleep`) hasta cada instante programado, sin ocupar un núcleo. La regularidad y el promedio exacto del intervalo se mantienen porque cada iteración se planifica calculando el siguiente instante objetivo con `System.nanoTime()`. Si un ciclo excede el tiempo previsto por retrasos del sistema operativo, se descarta la deuda acumulada para evitar ráfagas compensatorias descontroladas.
 
 ### 3. Captura Nativa Global No Bloqueante
 La interceptación de periféricos en segundo plano se gestiona con `JNativeHook 2.2.2`, que instala ganchos globales a nivel de sistema operativo (`WH_KEYBOARD_LL` y `WH_MOUSE_LL` en Win32, `CGEventTap` en macOS).
@@ -183,6 +188,7 @@ src/autoclicker/
 │   ├── Atajo.java                           # Representación inmutable de una tecla, modificadores o botón lateral
 │   ├── BotonMouse.java                      # Enumeración de botones (izquierdo, central, derecho)
 │   ├── ConfiguracionClics.java              # Record inmutable de parámetros de autoclicker y validaciones
+│   ├── ConfiguracionTecleo.java             # Record inmutable de parámetros de autoteclado y validaciones
 │   ├── EventoMacro.java                     # Modelado de eventos de cinemática (clic, movimiento, tecla, scroll)
 │   ├── Grabacion.java                       # Secuencia ordenada de eventos temporizados y cálculo de duraciones
 │   └── TipoGrabacion.java                   # Modo de captura: MOUSE, TECLADO o COMBINADO
@@ -192,20 +198,27 @@ src/autoclicker/
 ├── servicio/                                # Motores de lógica, simulación y escucha
 │   ├── AtajoService.java                    # Gestión de hooks nativos globales y despacho de atajos (JNativeHook)
 │   ├── ClickerService.java                  # Motor de clics de alta precisión con Robot e hilo demonio dedicado
+│   ├── ConversorTeclas.java                 # Mapeo y traducción de códigos JNativeHook a eventos de KeyEvent / Robot
 │   ├── EntradaListener.java                 # Interfaz de escucha para eventos de entrada con timestamp
 │   ├── EstadoListener.java                  # Interfaz reactiva para notificaciones de progreso de automatización
+│   ├── FiltroMonitor.java                   # Lógica de pausa y reanudación con retardo de 500 ms al volver de otro monitor
 │   ├── GrabadoraService.java                # Lógica de captura y balanceo de eventos pendientes de liberación
-│   └── ReproductorService.java              # Motor de reproducción de eventos cinemáticos con java.awt.Robot
+│   ├── ReproductorService.java              # Motor de reproducción de eventos cinemáticos con java.awt.Robot
+│   ├── TecleadorService.java                # Motor de pulsaciones continuas de teclado con Robot y liberación garantizada
+│   ├── UbicacionCursor.java                 # Contrato desacoplado para consultar si el cursor está en el monitor objetivo
+│   └── UbicacionCursorAwt.java              # Verificación de pantalla mediante AWT comparando el GraphicsDevice
 └── ui/                                      # Capa de presentación gráfica basada en Swing
     ├── VentanaPrincipal.java                # Ventana raíz, gestión de pestañas y orquestación de servicios
     ├── ModoPanel.java                       # Contrato de ciclo de vida para paneles de modo
     ├── PanelModo.java                       # Clase base con utilidades comunes para vistas de modo
     ├── PanelAutoclicker.java                # Interfaz de usuario para el modo de clics continuos
+    ├── PanelAutoteclado.java                # Interfaz de usuario para el modo de tecleo automático
     ├── PanelMacro.java                      # Interfaz unificada para modos de grabación (Mouse, Teclado, Ambos)
     ├── ModoGrabacion.java                   # Configuración contextual y descriptores para cada tipo de macro
     ├── AtajoConfigurable.java               # Vinculación bidireccional entre UI, atajo y preferencias
     ├── Diseno.java                          # Helpers de composición gráfica, márgenes y alineación
     ├── DialogoOpciones.java                 # Ventana modal de configuración y selección de temas
+    ├── SelectorMonitor.java                 # Selector segmentado de monitor con detalle de resoluciones reales
     ├── tema/                                # Sistema de diseño visual y paletas cromáticas
     │   ├── Paleta.java                      # Contrato de colores para fondos, tarjetas, bordes y acentos
     │   ├── Tema.java                        # Gestor de tema activo, tipografías del sistema y métricas
@@ -239,20 +252,20 @@ src/autoclicker/
 
 El proyecto cuenta con una exhaustiva suite de pruebas unitarias y de integración construida sobre **JUnit 5**, que valida el comportamiento matemático de tiempos, la integridad de serialización y la robustez ante entradas anómalas.
 
-### Resumen de Cobertura por Paquete:
+### Resumen de pruebas por paquete:
 
-| Paquete | Clases Auditadas | Tests Activos | Cobertura Estimada | Foco de las Pruebas |
-| :--- | :--- | :---: | :---: | :--- |
-| `autoclicker.modelo` | `Atajo`, `ConfiguracionClics`, `Grabacion` | 18 | **~98%** | Inmutabilidad, validación de intervalos seguros (>=10ms), descarte de modificadores en mouse, conteo exacto de pulsaciones. |
-| `autoclicker.persistencia` | `PreferenciasRepository`, `GrabacionRepository` | 27 | **~95%** | Serialización JSON con timestamps relativos, tolerancia a formatos incompletos, ordenamiento cronológico, persistencia en memoria. |
-| `autoclicker.servicio` | `ClickerService`, `GrabadoraService`, `AtajoService` | 35 | **~92%** | Balanceo automático de teclas no soltadas, supresión de eco en atajos, cálculo de pausas seguras, captura no bloqueante. |
-| `autoclicker.ui` | Vistas y temas | Estructural | **~75%** | Verificación de inicialización de componentes y paletas. |
-| **Total Suite** | **Proyecto Completo** | **80 tests** | **>90%** | **Validación integral sin fallos ni regresiones.** |
+| Paquete | Clases Probadas | Tests Activos | Foco de las Pruebas |
+| :--- | :--- | :---: | :--- |
+| `autoclicker.modelo` | `Atajo`, `ConfiguracionClics`, `ConfiguracionTecleo`, `Grabacion` | 30 | Inmutabilidad, validación de intervalos seguros (>=10ms, >=20ms doble clic), descarte de modificadores en mouse, conteo exacto de pulsaciones. |
+| `autoclicker.persistencia` | `PreferenciasRepository`, `GrabacionRepository` | 35 | Serialización JSON con timestamps relativos, tolerancia a formatos incompletos, ordenamiento cronológico, persistencia en memoria y conservación de configuración. |
+| `autoclicker.servicio` | `AtajoService`, `ClickerService`, `ConversorTeclas`, `FiltroMonitor`, `GrabadoraService`, `TecleadorService` | 52 | Balanceo automático de teclas no soltadas, supresión de eco en atajos, cálculo de pausas seguras, filtrado de monitor y traducción de teclas. |
+| **Total Suite** | **Proyecto Completo** | **117 tests** | **Validación integral sin fallos ni regresiones.** |
 
 ### Aislamiento Absoluto de Pruebas:
 - **Ejecución Headless (`-Djava.awt.headless=true`):** Las pruebas no instancian ventanas visibles en la pantalla ni toman el control del cursor físico del desarrollador, lo que permite ejecutarlas de forma segura y desatendida en cualquier entorno de Integración Continua (GitHub Actions).
 - **Inyección de Dependencias para Pruebas:**
   - `ClickerService` permite la inyección de instancias simuladas de `java.awt.Robot`.
+  - `ClickerService` y `TecleadorService` aceptan una `UbicacionCursor` simulada.
   - `AtajoService` admite proveedores de reloj personalizados (`LongSupplier reloj`) para emular el paso del tiempo en nanosegundos sin retardos artificiales.
   - `PreferenciasRepository` se apoya en `PreferenciasEnMemoria` para aislar los tests de lectura/escritura en el Registro del sistema anfitrión.
 

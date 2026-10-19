@@ -3,6 +3,7 @@ package autoclicker.persistencia;
 import autoclicker.modelo.Atajo;
 import autoclicker.modelo.BotonMouse;
 import autoclicker.modelo.ConfiguracionClics;
+import autoclicker.modelo.ConfiguracionTecleo;
 
 import java.util.Optional;
 import java.util.prefs.BackingStoreException;
@@ -24,6 +25,13 @@ public class PreferenciasRepository {
     private static final String CLICS_ESPERA    = "clics.esperaSegundos";
     private static final String CLICS_BOTON     = "clics.boton";
     private static final String CLICS_DOBLE     = "clics.dobleClic";
+    private static final String CLICS_MONITOR   = "clics.monitor";
+
+    private static final String TECLEO_INTERVALO    = "tecleo.intervaloMs";
+    private static final String TECLEO_REPETICIONES = "tecleo.repeticiones";
+    private static final String TECLEO_ESPERA       = "tecleo.esperaSegundos";
+    private static final String TECLEO_TECLA        = "tecleo.tecla";
+    private static final String TECLEO_MONITOR      = "tecleo.monitor";
 
     private final Preferences prefs;
 
@@ -79,12 +87,20 @@ public class PreferenciasRepository {
      */
     public ConfiguracionClics cargarConfiguracionClics(ConfiguracionClics predeterminada) {
         try {
+            BotonMouse boton = BotonMouse.valueOf(prefs.get(CLICS_BOTON, predeterminada.boton().name()));
+            boolean dobleClic = prefs.getBoolean(CLICS_DOBLE, predeterminada.dobleClic());
+            long minimo = dobleClic ? ConfiguracionClics.INTERVALO_MINIMO_DOBLE_MS : ConfiguracionClics.INTERVALO_MINIMO_MS;
+            long intervalo = Math.max(minimo, prefs.getLong(CLICS_INTERVALO, predeterminada.intervaloMs()));
+            int monitorGuardado = prefs.getInt(CLICS_MONITOR, predeterminada.monitor());
+            int monitor = (monitorGuardado >= ConfiguracionClics.TODOS_LOS_MONITORES)
+                    ? monitorGuardado : predeterminada.monitor();
             return new ConfiguracionClics(
-                    prefs.getLong(CLICS_INTERVALO, predeterminada.intervaloMs()),
+                    intervalo,
                     prefs.getInt(CLICS_MAXIMO, predeterminada.maxClics()),
                     prefs.getInt(CLICS_ESPERA, predeterminada.esperaSegundos()),
-                    BotonMouse.valueOf(prefs.get(CLICS_BOTON, predeterminada.boton().name())),
-                    prefs.getBoolean(CLICS_DOBLE, predeterminada.dobleClic()));
+                    boton,
+                    dobleClic,
+                    monitor);
         } catch (IllegalArgumentException e) {
             return predeterminada; // datos guardados corruptos: se usan los predeterminados
         }
@@ -96,6 +112,37 @@ public class PreferenciasRepository {
         prefs.putInt(CLICS_ESPERA, config.esperaSegundos());
         prefs.put(CLICS_BOTON, config.boton().name());
         prefs.putBoolean(CLICS_DOBLE, config.dobleClic());
+        prefs.putInt(CLICS_MONITOR, config.monitor());
+        guardar();
+    }
+
+    /**
+     * Carga los parámetros del autoteclado de la última vez.
+     * @param predeterminada valores que se usan para lo que no esté guardado;
+     *                       también se devuelve si lo guardado no es válido
+     */
+    public ConfiguracionTecleo cargarConfiguracionTecleo(ConfiguracionTecleo predeterminada) {
+        try {
+            Atajo tecla = cargarAtajo(TECLEO_TECLA).orElse(predeterminada.tecla());
+            long intervaloGuardado = prefs.getLong(TECLEO_INTERVALO, predeterminada.intervaloMs());
+            long intervalo = Math.max(ConfiguracionTecleo.INTERVALO_MINIMO_MS, intervaloGuardado);
+            int repeticiones = prefs.getInt(TECLEO_REPETICIONES, predeterminada.repeticiones());
+            int espera = prefs.getInt(TECLEO_ESPERA, predeterminada.esperaSegundos());
+            int monitorGuardado = prefs.getInt(TECLEO_MONITOR, predeterminada.monitor());
+            int monitor = (monitorGuardado >= ConfiguracionClics.TODOS_LOS_MONITORES)
+                    ? monitorGuardado : predeterminada.monitor();
+            return new ConfiguracionTecleo(tecla, intervalo, repeticiones, espera, monitor);
+        } catch (IllegalArgumentException e) {
+            return predeterminada; // datos guardados corruptos: se usan los predeterminados
+        }
+    }
+
+    public void guardarConfiguracionTecleo(ConfiguracionTecleo config) {
+        guardarAtajo(TECLEO_TECLA, config.tecla());
+        prefs.putLong(TECLEO_INTERVALO, config.intervaloMs());
+        prefs.putInt(TECLEO_REPETICIONES, config.repeticiones());
+        prefs.putInt(TECLEO_ESPERA, config.esperaSegundos());
+        prefs.putInt(TECLEO_MONITOR, config.monitor());
         guardar();
     }
 

@@ -3,6 +3,7 @@ package autoclicker.ui;
 import autoclicker.persistencia.PreferenciasRepository;
 import autoclicker.servicio.AtajoService;
 import autoclicker.servicio.ClickerService;
+import autoclicker.servicio.TecleadorService;
 import autoclicker.ui.componentes.BotonEngranaje;
 import autoclicker.ui.componentes.ControlSegmentado;
 import autoclicker.ui.componentes.Etiqueta;
@@ -24,7 +25,7 @@ import java.util.List;
  */
 public class VentanaPrincipal extends JFrame {
 
-    private static final int ANCHO_MINIMO = 500;
+    private static final int ANCHO_MINIMO = 550;
     /** Lo más baja que se puede dejar la ventana: caben el encabezado, el pie y un poco de las opciones. */
     private static final int ALTO_MINIMO = 440;
 
@@ -40,16 +41,17 @@ public class VentanaPrincipal extends JFrame {
 
     /**
      * @param grabaciones una pestaña de grabación por cada elemento, en ese orden,
-     *                    después de la pestaña del autoclicker
+     *                    después de la pestaña del autoteclado
      */
     public VentanaPrincipal(AtajoService atajos, PreferenciasRepository preferencias,
-                            ClickerService clicker, List<ModoGrabacion> grabaciones) {
+                            ClickerService clicker, TecleadorService tecleador, List<ModoGrabacion> grabaciones) {
         super("AutoClicker");
         this.atajos = atajos;
         this.preferencias = preferencias;
 
         List<ModoPanel> pestanasDeModos = new ArrayList<>();
         pestanasDeModos.add(new PanelAutoclicker(clicker, atajos, preferencias));
+        pestanasDeModos.add(new PanelAutoteclado(tecleador, atajos, preferencias));
         for (ModoGrabacion grabacion : grabaciones) {
             pestanasDeModos.add(new PanelMacro(grabacion, atajos, preferencias));
         }

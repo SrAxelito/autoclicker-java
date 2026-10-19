@@ -29,18 +29,34 @@ class ClickerServiceTest {
     @Test
     void conIntervalosCortosAcortaLaPausaDePresion() {
         assertEquals(5, ClickerService.pausaPresionMs(simple(10)));
-        assertEquals(7, ClickerService.pausaPresionMs(simple(15)));
+        assertEquals(7, ClickerService.pausaPresionMs(simple(14)));
+        assertEquals(9, ClickerService.pausaPresionMs(simple(18)));
         assertEquals(10, ClickerService.pausaPresionMs(simple(20)));
     }
 
     @Test
     void conIntervalosCortosAcortaElDobleClic() {
-        assertEquals(1, ClickerService.pausaPresionMs(doble(10)));
-        assertEquals(2, ClickerService.pausaDobleClicMs(doble(10)));
-        assertEquals(2, ClickerService.pausaPresionMs(doble(20)));
+        assertEquals(5, ClickerService.pausaPresionMs(doble(20)));
         assertEquals(5, ClickerService.pausaDobleClicMs(doble(20)));
-        assertEquals(6, ClickerService.pausaPresionMs(doble(50)));
+        assertEquals(7, ClickerService.pausaPresionMs(doble(28)));
+        assertEquals(7, ClickerService.pausaDobleClicMs(doble(28)));
+        assertEquals(10, ClickerService.pausaPresionMs(doble(50)));
         assertEquals(12, ClickerService.pausaDobleClicMs(doble(50)));
+    }
+
+    @Test
+    void paraTodosLosIntervalosValidosLaPresionYLaSeparacionNuncaBajanDeCincoMs() {
+        for (long intervalo = ConfiguracionClics.INTERVALO_MINIMO_MS; intervalo <= 2000; intervalo++) {
+            assertTrue(ClickerService.pausaPresionMs(simple(intervalo)) >= 5,
+                    "intervalo simple " + intervalo + " ms: la presión bajó de 5 ms");
+        }
+        for (long intervalo = ConfiguracionClics.INTERVALO_MINIMO_DOBLE_MS; intervalo <= 2000; intervalo++) {
+            ConfiguracionClics config = doble(intervalo);
+            assertTrue(ClickerService.pausaPresionMs(config) >= 5,
+                    "intervalo doble " + intervalo + " ms: la presión bajó de 5 ms");
+            assertTrue(ClickerService.pausaDobleClicMs(config) >= 5,
+                    "intervalo doble " + intervalo + " ms: la separación bajó de 5 ms");
+        }
     }
 
     @Test
@@ -52,11 +68,11 @@ class ClickerServiceTest {
     }
 
     @Test
-    void unDobleClicNuncaOcupaMasDeLaMitadDelIntervalo() {
-        for (long intervalo = ConfiguracionClics.INTERVALO_MINIMO_MS; intervalo <= 2000; intervalo++) {
+    void unDobleClicNuncaOcupaMasDeTresCuartosDelIntervalo() {
+        for (long intervalo = ConfiguracionClics.INTERVALO_MINIMO_DOBLE_MS; intervalo <= 2000; intervalo++) {
             ConfiguracionClics config = doble(intervalo);
             long ocupado = 2 * ClickerService.pausaPresionMs(config) + ClickerService.pausaDobleClicMs(config);
-            assertTrue(ocupado * 2 <= intervalo, "intervalo de " + intervalo + " ms: el doble clic ocupa " + ocupado + " ms");
+            assertTrue(ocupado * 4 <= intervalo * 3, "intervalo de " + intervalo + " ms: el doble clic ocupa " + ocupado + " ms");
         }
     }
 }
