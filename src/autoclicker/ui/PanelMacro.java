@@ -1,6 +1,7 @@
 package autoclicker.ui;
 
 import autoclicker.modelo.Grabacion;
+import autoclicker.persistencia.GrabacionRepository;
 import autoclicker.persistencia.PreferenciasRepository;
 import autoclicker.servicio.AtajoService;
 import autoclicker.servicio.EstadoListener;
@@ -12,9 +13,14 @@ import autoclicker.ui.componentes.Etiqueta;
 import autoclicker.ui.componentes.IndicadorEstado;
 import autoclicker.ui.tema.Tema;
 
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.Font;
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
@@ -23,7 +29,8 @@ import java.util.Locale;
  * las veces indicadas. Es la misma clase para "Mouse", "Teclado" y
  * "Mouse + Teclado"; lo que cambia entre ellas viene en el {@link ModoGrabacion}.
  * Las repeticiones se guardan al reproducir y al cerrar la ventana; la
- * grabación en sí no se guarda y se pierde al cerrar el programa.
+ * grabación en sí no se guarda y se pierde al cerrar el programa, salvo
+ * que se guarde explícitamente en un archivo en los modos que lo soportan.
  */
 class PanelMacro extends PanelModo implements EstadoListener {
 
@@ -37,6 +44,9 @@ class PanelMacro extends PanelModo implements EstadoListener {
     private final String claveRepeticiones;
     private final AtajoConfigurable atajoGrabar;
     private final AtajoConfigurable atajoReproducir;
+    private final boolean permiteArchivos;
+    private final BotonModerno cargarBtn;
+    private final BotonModerno guardarBtn;
 
     private Grabacion grabacion = Grabacion.VACIA;
 
@@ -56,6 +66,17 @@ class PanelMacro extends PanelModo implements EstadoListener {
         this.atajos = atajos;
         this.preferencias = preferencias;
         this.claveRepeticiones = modo.claveRepeticiones();
+        this.permiteArchivos = modo.permiteArchivos();
+
+        if (permiteArchivos) {
+            this.cargarBtn = new BotonModerno("Cargar", BotonModerno.Variante.SECUNDARIO);
+            this.guardarBtn = new BotonModerno("Guardar", BotonModerno.Variante.SECUNDARIO);
+            this.cargarBtn.addActionListener(e -> cargarDesdeArchivo());
+            this.guardarBtn.addActionListener(e -> guardarEnArchivo());
+        } else {
+            this.cargarBtn = null;
+            this.guardarBtn = null;
+        }
 
         atajoGrabar = new AtajoConfigurable(modo.prefijoAtajos() + ".grabar", modo.atajoGrabar(),
                 () -> alternarGrabacion(false), atajos, preferencias);
@@ -73,6 +94,10 @@ class PanelMacro extends PanelModo implements EstadoListener {
 
         Diseno.Pila opciones = pilaDeOpciones();
         opciones.agregar(Diseno.tarjeta("Grabación", resumen, modo.descripcion()), 0);
+        if (permiteArchivos) {
+            opciones.agregar(Diseno.tarjeta("Archivo", Diseno.dosColumnas(cargarBtn, guardarBtn),
+                    "Guarda la grabación actual o carga una desde disco"), 12);
+        }
         opciones.agregar(Diseno.tarjeta("Repeticiones", repeticionesCampo, "0 = repetir hasta detener"), 12);
         opciones.agregar(Diseno.dosColumnas(
                 Diseno.tarjeta("Grabar / detener", atajoGrabar.selector(), null),
@@ -203,7 +228,83 @@ class PanelMacro extends PanelModo implements EstadoListener {
         repeticionesCampo.setEnabled(libre);
         atajoGrabar.setEnabled(libre);
         atajoReproducir.setEnabled(libre);
+        if (permiteArchivos) {
+            cargarBtn.setEnabled(libre);
+            guardarBtn.setEnabled(libre && !grabacion.estaVacia());
+        }
         avisarCambioDeOcupado();
+    }
+
+    private void cargarDesdeArchivo() {
+        if (grabadora.estaGrabando() || reproductor.estaCorriendo()) return;
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Cargar grabación");
+        FileNameExtensionFilter filtro = new FileNameExtensionFilter("Archivo de macro JSON (*.json)", "json");
+        chooser.setFileFilter(filtro);
+        chooser.setAcceptAllFileFilterUsed(true);
+
+        int seleccion = chooser.showOpenDialog(this);
+        if (seleccion == JFileChooser.APPROVE_OPTION) {
+            File archivo = chooser.getSelectedFile();
+            try {
+                Grabacion cargada = GrabacionRepository.cargar(archivo);
+                if (cargada.estaVacia()) {
+                    JOptionPane.showMessageDialog(this,
+                            "El archivo no contiene ninguna acción grabada.",
+                            "Grabación vacía", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                this.grabacion = cargada;
+                resumen.setText(describir(grabacion));
+                estado.setEstado("Grabación cargada (" + archivo.getName() + ")", IndicadorEstado.Tono.INACTIVO);
+                actualizarControles();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this,
+                        "No se pudo cargar la grabación:\n" + ex.getMessage(),
+                        "Error al cargar", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void guardarEnArchivo() {
+        if (grabacion.estaVacia() || grabadora.estaGrabando() || reproductor.estaCorriendo()) return;
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Guardar grabación");
+        chooser.setSelectedFile(new File("grabacion.json"));
+        FileNameExtensionFilter filtro = new FileNameExtensionFilter("Archivo de macro JSON (*.json)", "json");
+        chooser.setFileFilter(filtro);
+        chooser.setAcceptAllFileFilterUsed(true);
+
+        int seleccion = chooser.showSaveDialog(this);
+        if (seleccion == JFileChooser.APPROVE_OPTION) {
+            File archivo = chooser.getSelectedFile();
+            if (!archivo.getName().toLowerCase(Locale.ROOT).endsWith(".json")) {
+                if (archivo.getParentFile() != null) {
+                    archivo = new File(archivo.getParentFile(), archivo.getName() + ".json");
+                } else {
+                    archivo = new File(archivo.getName() + ".json");
+                }
+            }
+            if (archivo.exists()) {
+                int respuesta = JOptionPane.showConfirmDialog(
+                        this,
+                        "El archivo '" + archivo.getName() + "' ya existe.\n¿Deseas reemplazarlo?",
+                        "Confirmar sobrescritura",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE);
+                if (respuesta != JOptionPane.YES_OPTION) {
+                    return;
+                }
+            }
+            try {
+                GrabacionRepository.guardar(archivo, grabacion);
+                estado.setEstado("Grabación guardada (" + archivo.getName() + ")", IndicadorEstado.Tono.INACTIVO);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "No se pudo guardar la grabación:\n" + ex.getMessage(),
+                        "Error al guardar", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     private String describir(Grabacion g) {
