@@ -4,7 +4,7 @@
 
 ### Automatización de escritorio multiplataforma de alta precisión para clics, mouse y teclado
 
-[![Versión](https://img.shields.io/badge/versión-v1.7.0-0969da?style=flat-square)](https://github.com/SrAxelito/autoclicker-java/releases/latest)
+[![Versión](https://img.shields.io/badge/versión-v1.8.0-0969da?style=flat-square)](https://github.com/SrAxelito/autoclicker-java/releases/latest)
 [![Java](https://img.shields.io/badge/Java-21%2B-ED8B00?style=flat-square&logo=openjdk&logoColor=white)](https://adoptium.net/)
 [![GUI](https://img.shields.io/badge/GUI-Swing%20%2F%20AWT-5382a1?style=flat-square&logo=java&logoColor=white)](https://docs.oracle.com/en/java/javase/21/docs/api/java.desktop/javax/swing/package-summary.html)
 [![JNativeHook](https://img.shields.io/badge/JNativeHook-2.2.2-2ea44f?style=flat-square)](https://github.com/kwhat/jnativehook)
@@ -88,9 +88,13 @@ La aplicación se estructura en cinco pestañas modulares e independientes. Para
 
 ### ✨ Aspectos Destacados de las Últimas Versiones
 
+- **v1.8.0 — Autoteclado, Monitor Activo y Optimización para Juegos:**
+  - **Autoteclado:** Nueva pestaña que pulsa una tecla o combinación (Ctrl, Alt, Shift) de forma repetida, con intervalo, espera inicial, repeticiones y atajo propio; nunca deja teclas presionadas al detener.
+  - **Monitor activo:** En Autoclicker y Autoteclado se elige un monitor; mientras el cursor está en otro, la sesión se pausa y se reanuda medio segundo después de volver. El monitor elegido se recuerda aunque un día no esté conectado.
+  - **Autoclicker más suave para juegos:** Intervalo mínimo de 10 ms (20 ms con doble clic), presión mínima de 5 ms y espera sin espera activa, para no ocupar un núcleo del procesador. Los intervalos guardados más cortos que el mínimo se suben al mínimo sin perder los demás parámetros.
 - **v1.7.0 — Persistencia de Macros y Estabilización de Eventos:**
   - **Serialización en JSON de grabaciones:** Nuevo motor de persistencia mediante `GrabacionRepository`, que permite exportar e importar macros completas a archivos JSON estructurados y legibles sin dependencias externas.
-  - **Umbral de protección contra saturación:** Límite mínimo de cadencia en `10 ms` (100 clics por segundo; 20 ms con doble clic) y presión mínima de 5 ms para evitar colapso del bucle de mensajes del sistema operativo en videojuegos y motores gráficos de alto rendimiento.
+  - **Umbral de protección contra saturación:** Límite mínimo de cadencia en `10 ms` (100 clics por segundo) y presión mínima de 2 ms para evitar colapso del bucle de mensajes del sistema operativo en videojuegos y motores gráficos de alto rendimiento.
 - **v1.6.1 / v1.6.0 — Interfaz Adaptativa y Ergonomía:**
   - **Scroll inteligente y diseño responsivo:** Integración de `PanelDesplazable` con barras de desplazamiento sutiles y diseño de ventana adaptable para monitores pequeños y laptops, manteniendo los controles de estado y ejecución siempre a la vista.
   - **Atajos configurables con modificadores:** Asignación de cualquier combinación de teclado (<kbd>Ctrl</kbd>, <kbd>Alt</kbd>, <kbd>Shift</kbd>, <kbd>Win</kbd>) o botones laterales del mouse (<kbd>Botón 4</kbd> / <kbd>Botón 5</kbd>).
@@ -109,11 +113,11 @@ El proyecto incluye scripts autónomos diseñados para compilar, empaquetar y va
 
 ```bash
 # En Windows (o doble clic sobre el archivo):
-construir.bat [version]       # Ejemplo: construir.bat 1.7.0
+construir.bat [version]       # Ejemplo: construir.bat 1.8.0
 
 # En macOS y Linux:
 chmod +x construir.sh
-./construir.sh [version]      # Ejemplo: ./construir.sh 1.7.0
+./construir.sh [version]      # Ejemplo: ./construir.sh 1.8.0
 ```
 
 > **Resultado:** Los artefactos generados se sitúan en el directorio `dist/` (comprimidos listos para distribución) y en `build/salida/` (aplicación desempaquetada para validación inmediata).
@@ -248,20 +252,20 @@ src/autoclicker/
 
 El proyecto cuenta con una exhaustiva suite de pruebas unitarias y de integración construida sobre **JUnit 5**, que valida el comportamiento matemático de tiempos, la integridad de serialización y la robustez ante entradas anómalas.
 
-### Resumen de Cobertura por Paquete:
+### Resumen de pruebas por paquete:
 
-| Paquete | Clases Auditadas | Tests Activos | Cobertura Estimada | Foco de las Pruebas |
-| :--- | :--- | :---: | :---: | :--- |
-| `autoclicker.modelo` | `Atajo`, `ConfiguracionClics`, `Grabacion` | 18 | **~98%** | Inmutabilidad, validación de intervalos seguros (>=10ms), descarte de modificadores en mouse, conteo exacto de pulsaciones. |
-| `autoclicker.persistencia` | `PreferenciasRepository`, `GrabacionRepository` | 27 | **~95%** | Serialización JSON con timestamps relativos, tolerancia a formatos incompletos, ordenamiento cronológico, persistencia en memoria. |
-| `autoclicker.servicio` | `ClickerService`, `GrabadoraService`, `AtajoService` | 35 | **~92%** | Balanceo automático de teclas no soltadas, supresión de eco en atajos, cálculo de pausas seguras, captura no bloqueante. |
-| `autoclicker.ui` | Vistas y temas | Estructural | **~75%** | Verificación de inicialización de componentes y paletas. |
-| **Total Suite** | **Proyecto Completo** | **80 tests** | **>90%** | **Validación integral sin fallos ni regresiones.** |
+| Paquete | Clases Probadas | Tests Activos | Foco de las Pruebas |
+| :--- | :--- | :---: | :--- |
+| `autoclicker.modelo` | `Atajo`, `ConfiguracionClics`, `ConfiguracionTecleo`, `Grabacion` | 30 | Inmutabilidad, validación de intervalos seguros (>=10ms, >=20ms doble clic), descarte de modificadores en mouse, conteo exacto de pulsaciones. |
+| `autoclicker.persistencia` | `PreferenciasRepository`, `GrabacionRepository` | 35 | Serialización JSON con timestamps relativos, tolerancia a formatos incompletos, ordenamiento cronológico, persistencia en memoria y conservación de configuración. |
+| `autoclicker.servicio` | `AtajoService`, `ClickerService`, `ConversorTeclas`, `FiltroMonitor`, `GrabadoraService`, `TecleadorService` | 52 | Balanceo automático de teclas no soltadas, supresión de eco en atajos, cálculo de pausas seguras, filtrado de monitor y traducción de teclas. |
+| **Total Suite** | **Proyecto Completo** | **117 tests** | **Validación integral sin fallos ni regresiones.** |
 
 ### Aislamiento Absoluto de Pruebas:
 - **Ejecución Headless (`-Djava.awt.headless=true`):** Las pruebas no instancian ventanas visibles en la pantalla ni toman el control del cursor físico del desarrollador, lo que permite ejecutarlas de forma segura y desatendida en cualquier entorno de Integración Continua (GitHub Actions).
 - **Inyección de Dependencias para Pruebas:**
   - `ClickerService` permite la inyección de instancias simuladas de `java.awt.Robot`.
+  - `ClickerService` y `TecleadorService` aceptan una `UbicacionCursor` simulada.
   - `AtajoService` admite proveedores de reloj personalizados (`LongSupplier reloj`) para emular el paso del tiempo en nanosegundos sin retardos artificiales.
   - `PreferenciasRepository` se apoya en `PreferenciasEnMemoria` para aislar los tests de lectura/escritura en el Registro del sistema anfitrión.
 
