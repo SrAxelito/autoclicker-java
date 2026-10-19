@@ -58,7 +58,7 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
                 intervaloCampo.setValor((int) ConfiguracionClics.INTERVALO_MINIMO_DOBLE_MS);
             }
         });
-        mostrarConfiguracion(preferencias.cargarConfiguracionClics(leerConfiguracion()));
+        mostrarConfiguracion(preferencias.cargarConfiguracionClics(leerConfiguracionParaGuardar()));
 
         Diseno.Pila opciones = pilaDeOpciones();
         opciones.agregar(Diseno.dosColumnas(
@@ -99,20 +99,31 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
 
     @Override
     public void guardarParametros() {
-        preferencias.guardarConfiguracionClics(leerConfiguracion());
+        preferencias.guardarConfiguracionClics(leerConfiguracionParaGuardar());
     }
 
     // ---- Parámetros ----
 
-    /** Arma la configuración con lo que hay ahora mismo en los campos. */
-    private ConfiguracionClics leerConfiguracion() {
+    /** Configuración para ejecutar la sesión: usa el monitor activo si está disponible, o "Todos". */
+    private ConfiguracionClics leerConfiguracionParaTrabajar() {
         return new ConfiguracionClics(
                 intervaloCampo.getValor(),
                 clicsCampo.getValor(),
                 esperaCampo.getValor(),
                 botonControl.getSeleccion(),
                 tipoControl.getSeleccion(),
-                selectorMonitor.getMonitor());
+                selectorMonitor.monitorParaTrabajar());
+    }
+
+    /** Configuración para persistir: conserva el último monitor elegido o cargado. */
+    private ConfiguracionClics leerConfiguracionParaGuardar() {
+        return new ConfiguracionClics(
+                intervaloCampo.getValor(),
+                clicsCampo.getValor(),
+                esperaCampo.getValor(),
+                botonControl.getSeleccion(),
+                tipoControl.getSeleccion(),
+                selectorMonitor.monitorParaGuardar());
     }
 
     /** Pone una configuración en los campos; cada campo ajusta el valor a sus propios límites. */
@@ -130,14 +141,14 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
     private void iniciar() {
         if (atajos.estaCapturando()) atajos.cancelarCaptura();
         try {
-            ConfiguracionClics config = leerConfiguracion();
+            ConfiguracionClics configTrabajo = leerConfiguracionParaTrabajar();
             // Si ya había una sesión en marcha no se inició nada y no habrá aviso de
             // final: la interfaz se deja como está.
-            if (!servicio.iniciar(config)) return;
+            if (!servicio.iniciar(configTrabajo)) return;
             relojProgreso.start();
             actualizarControles();
             // Se guarda aquí además de al cerrar, por si el programa no se cierra con la X.
-            preferencias.guardarConfiguracionClics(config);
+            preferencias.guardarConfiguracionClics(leerConfiguracionParaGuardar());
         } catch (IllegalArgumentException | NullPointerException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Configuración inválida", JOptionPane.WARNING_MESSAGE);

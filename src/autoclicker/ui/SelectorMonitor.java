@@ -25,6 +25,8 @@ public class SelectorMonitor extends JPanel {
     private final boolean hayMultiplesMonitores;
     private final int cantidadMonitores;
     private final ControlSegmentado<Integer> controlSegmentado;
+    private int monitorGuardado = ConfiguracionClics.TODOS_LOS_MONITORES;
+    private boolean actualizandoSeleccion = false;
 
     public SelectorMonitor() {
         super(new BorderLayout(0, 6));
@@ -71,6 +73,12 @@ public class SelectorMonitor extends JPanel {
             }
 
             this.controlSegmentado = new ControlSegmentado<>(valores, etiquetas);
+            this.controlSegmentado.alCambiar(sel -> {
+                if (actualizandoSeleccion) return;
+                if (sel != null) {
+                    this.monitorGuardado = sel;
+                }
+            });
             add(controlSegmentado, BorderLayout.NORTH);
 
             Etiqueta detalle = new Etiqueta(nota.toString(), Etiqueta.Rol.SUAVE, Tema.fuente(Font.PLAIN, 12f));
@@ -91,20 +99,45 @@ public class SelectorMonitor extends JPanel {
         return cantidadMonitores;
     }
 
-    public int getMonitor() {
+    /**
+     * Monitor con el que debe operar la sesión actual.
+     * Si no hay múltiples monitores o el monitor elegido no está conectado, devuelve "Todos".
+     */
+    public int monitorParaTrabajar() {
         if (!hayMultiplesMonitores || controlSegmentado == null) {
             return ConfiguracionClics.TODOS_LOS_MONITORES;
         }
         Integer sel = controlSegmentado.getSeleccion();
-        return (sel != null) ? sel : ConfiguracionClics.TODOS_LOS_MONITORES;
+        if (sel == null || sel < 0 || sel >= cantidadMonitores) {
+            return ConfiguracionClics.TODOS_LOS_MONITORES;
+        }
+        return sel;
+    }
+
+    /**
+     * Monitor que debe persistirse en las preferencias del usuario.
+     * Conserva el último valor cargado o elegido aunque el monitor no esté conectado actualmente.
+     */
+    public int monitorParaGuardar() {
+        return monitorGuardado;
+    }
+
+    public int getMonitor() {
+        return monitorParaTrabajar();
     }
 
     public void setMonitor(int monitor) {
+        this.monitorGuardado = monitor;
         if (!hayMultiplesMonitores || controlSegmentado == null) return;
-        if (monitor < 0 || monitor >= cantidadMonitores) {
-            controlSegmentado.setSeleccion(ConfiguracionClics.TODOS_LOS_MONITORES);
-        } else {
-            controlSegmentado.setSeleccion(monitor);
+        actualizandoSeleccion = true;
+        try {
+            if (monitor >= 0 && monitor < cantidadMonitores) {
+                controlSegmentado.setSeleccion(monitor);
+            } else {
+                controlSegmentado.setSeleccion(ConfiguracionClics.TODOS_LOS_MONITORES);
+            }
+        } finally {
+            actualizandoSeleccion = false;
         }
     }
 

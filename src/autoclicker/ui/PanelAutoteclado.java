@@ -61,7 +61,7 @@ class PanelAutoteclado extends PanelModo implements EstadoListener {
         selectorTecla.setNombre(teclaActual.nombre());
         selectorTecla.setAlActivar(this::alternarCapturaTecla);
 
-        mostrarConfiguracion(preferencias.cargarConfiguracionTecleo(leerConfiguracion()));
+        mostrarConfiguracion(preferencias.cargarConfiguracionTecleo(leerConfiguracionParaGuardar()));
 
         Diseno.Pila opciones = pilaDeOpciones();
         opciones.agregar(Diseno.tarjeta("Tecla a pulsar", selectorTecla, "Acepta modificadores (Ctrl, Alt, Shift)"), 0);
@@ -100,19 +100,29 @@ class PanelAutoteclado extends PanelModo implements EstadoListener {
 
     @Override
     public void guardarParametros() {
-        preferencias.guardarConfiguracionTecleo(leerConfiguracion());
+        preferencias.guardarConfiguracionTecleo(leerConfiguracionParaGuardar());
     }
 
     // ---- Parámetros ----
 
-    /** Arma la configuración con lo que hay ahora mismo en los campos. */
-    private ConfiguracionTecleo leerConfiguracion() {
+    /** Configuración para ejecutar la sesión: usa el monitor activo si está disponible, o "Todos". */
+    private ConfiguracionTecleo leerConfiguracionParaTrabajar() {
         return new ConfiguracionTecleo(
                 teclaActual,
                 intervaloCampo.getValor(),
                 repeticionesCampo.getValor(),
                 esperaCampo.getValor(),
-                selectorMonitor.getMonitor());
+                selectorMonitor.monitorParaTrabajar());
+    }
+
+    /** Configuración para persistir: conserva el último monitor elegido o cargado. */
+    private ConfiguracionTecleo leerConfiguracionParaGuardar() {
+        return new ConfiguracionTecleo(
+                teclaActual,
+                intervaloCampo.getValor(),
+                repeticionesCampo.getValor(),
+                esperaCampo.getValor(),
+                selectorMonitor.monitorParaGuardar());
     }
 
     /** Pone una configuración en los campos; cada campo ajusta el valor a sus propios límites. */
@@ -149,8 +159,8 @@ class PanelAutoteclado extends PanelModo implements EstadoListener {
     private void iniciar() {
         if (atajos.estaCapturando()) atajos.cancelarCaptura();
         try {
-            ConfiguracionTecleo config = leerConfiguracion();
-            Atajo tecla = config.tecla();
+            ConfiguracionTecleo configTrabajo = leerConfiguracionParaTrabajar();
+            Atajo tecla = configTrabajo.tecla();
             Atajo atajoIniciar = atajos.atajo(atajo.clave());
             if (atajoIniciar != null
                     && tecla.tipo() == atajoIniciar.tipo()
@@ -162,11 +172,11 @@ class PanelAutoteclado extends PanelModo implements EstadoListener {
                 return;
             }
 
-            if (!servicio.iniciar(config)) return;
+            if (!servicio.iniciar(configTrabajo)) return;
             atajos.setTolerarModificadores(true);
             relojProgreso.start();
             actualizarControles();
-            preferencias.guardarConfiguracionTecleo(config);
+            preferencias.guardarConfiguracionTecleo(leerConfiguracionParaGuardar());
         } catch (IllegalArgumentException | NullPointerException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Configuración inválida", JOptionPane.WARNING_MESSAGE);
