@@ -16,9 +16,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * El intervalo configurado es el tiempo entre el INICIO de un clic y el
  * inicio del siguiente. Lo que tarda cada clic (pausas de presión y de doble
- * clic) cuenta dentro de ese intervalo, no se suma a él. Para que eso se
- * cumpla también con intervalos cortos, las pausas se acortan hasta ocupar
- * como mucho la mitad del intervalo.
+ * clic) cuenta dentro de ese intervalo, no se suma a él.
+ *
+ * La espera entre clics se realiza durmiendo el hilo (sin espera activa ni
+ * Thread.onSpinWait) para no saturar la CPU ni trabar los juegos. Se planifica
+ * por instantes límite con System.nanoTime(): aunque cada espera individual pueda
+ * pasarse ligeramente, el promedio se mantiene exacto y no se acumula atraso.
+ * Si un clic se retrasa más allá del siguiente instante límite, se reprograma desde
+ * el momento actual en vez de disparar clics en ráfaga para recuperar.
  *
  * El progreso no se notifica clic a clic: quien lo muestre debe consultar
  * {@link #clicsHechos()} cada cierto tiempo. El listener solo recibe avisos
@@ -30,13 +35,6 @@ public class ClickerService {
     private static final long PAUSA_PRESION_MAX_MS = 10;
     /** Separación entre los dos clics de un doble clic cuando el intervalo lo permite. */
     private static final long PAUSA_DOBLE_CLIC_MAX_MS = 40;
-    /**
-     * Thread.sleep puede pasarse uno o dos milisegundos, así que el último
-     * tramo de cada espera se afina con espera activa. Con intervalos de 1 o
-     * 2 ms toda la espera es activa y un núcleo del procesador queda ocupado
-     * mientras se hacen los clics.
-     */
-    private static final long MARGEN_ESPERA_ACTIVA_NS = TimeUnit.MILLISECONDS.toNanos(2);
     /** Cuánto se espera a que termine el hilo de la sesión anterior antes de rendirse. */
     private static final long ESPERA_HILO_ANTERIOR_MS = 200;
 
@@ -179,16 +177,12 @@ public class ClickerService {
         return Math.min(PAUSA_DOBLE_CLIC_MAX_MS, config.intervaloMs() / 4);
     }
 
-    /** Espera hasta el instante indicado: duerme lo grueso y afina el final con espera activa. */
+    /** Espera durmiendo hasta el instante límite indicado, sin espera activa. */
     private void esperarHasta(long instanteNs) throws InterruptedException {
         while (corriendo.get()) {
             long falta = instanteNs - System.nanoTime();
             if (falta <= 0) return;
-            if (falta > MARGEN_ESPERA_ACTIVA_NS) {
-                TimeUnit.NANOSECONDS.sleep(falta - MARGEN_ESPERA_ACTIVA_NS);
-            } else {
-                Thread.onSpinWait();
-            }
+            TimeUnit.NANOSECONDS.sleep(falta);
         }
     }
 
