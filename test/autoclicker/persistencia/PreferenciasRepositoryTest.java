@@ -3,6 +3,7 @@ package autoclicker.persistencia;
 import autoclicker.modelo.Atajo;
 import autoclicker.modelo.BotonMouse;
 import autoclicker.modelo.ConfiguracionClics;
+import autoclicker.modelo.ConfiguracionTecleo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,6 +17,8 @@ class PreferenciasRepositoryTest {
 
     private static final ConfiguracionClics PREDETERMINADA =
             new ConfiguracionClics(100, 0, 3, BotonMouse.IZQUIERDO, false);
+    private static final ConfiguracionTecleo PREDETERMINADA_TECLEO =
+            new ConfiguracionTecleo(new Atajo(Atajo.Tipo.TECLA, 57, 0, "Espacio"), 100, 0, 3);
 
     private Preferences nodo;
     private PreferenciasRepository repositorio;
@@ -213,5 +216,60 @@ class PreferenciasRepositoryTest {
         nodo.putInt("repeticiones.mouse", -4);
 
         assertEquals(1, repositorio.cargarRepeticiones("repeticiones.mouse", 1));
+    }
+
+    // ---- Parámetros del autoteclado ----
+
+    @Test
+    void sinNadaGuardadoLaConfiguracionDeTecleoEsLaPredeterminada() {
+        assertEquals(PREDETERMINADA_TECLEO, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+    }
+
+    @Test
+    void laConfiguracionDeTecleoSeGuardaYSeRecupera() {
+        Atajo ctrlV = new Atajo(Atajo.Tipo.TECLA, 47, Atajo.CTRL, "Ctrl + V");
+        ConfiguracionTecleo guardada = new ConfiguracionTecleo(ctrlV, 50, 10, 1);
+
+        repositorio.guardarConfiguracionTecleo(guardada);
+
+        assertEquals(guardada, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+    }
+
+    @Test
+    void datosCorruptosVuelvenLaConfiguracionPredeterminada() {
+        Atajo ctrlV = new Atajo(Atajo.Tipo.TECLA, 47, Atajo.CTRL, "Ctrl + V");
+        repositorio.guardarConfiguracionTecleo(new ConfiguracionTecleo(ctrlV, 50, 10, 1));
+
+        // Tecla de tipo MOUSE en tecleo: corrupto
+        nodo.put("tecleo.tecla.tipo", "MOUSE");
+        assertEquals(PREDETERMINADA_TECLEO, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+
+        // Repeticiones negativas: corrupto
+        nodo.put("tecleo.tecla.tipo", "TECLA");
+        nodo.putInt("tecleo.repeticiones", -5);
+        assertEquals(PREDETERMINADA_TECLEO, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+
+        // Espera negativa: corrupto
+        nodo.putInt("tecleo.repeticiones", 0);
+        nodo.putInt("tecleo.esperaSegundos", -1);
+        assertEquals(PREDETERMINADA_TECLEO, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+    }
+
+    @Test
+    void unIntervaloDeTecleoMenorAlMinimoSeSubeAlMinimo() {
+        Atajo espacio = new Atajo(Atajo.Tipo.TECLA, 57, 0, "Espacio");
+        repositorio.guardarConfiguracionTecleo(new ConfiguracionTecleo(espacio, 50, 10, 1));
+        nodo.putLong("tecleo.intervaloMs", 1);
+
+        assertEquals(new ConfiguracionTecleo(espacio, 10, 10, 1),
+                repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+
+        nodo.putLong("tecleo.intervaloMs", 0);
+        assertEquals(new ConfiguracionTecleo(espacio, 10, 10, 1),
+                repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
+
+        nodo.putLong("tecleo.intervaloMs", -10);
+        assertEquals(new ConfiguracionTecleo(espacio, 10, 10, 1),
+                repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
     }
 }
