@@ -32,7 +32,8 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
     private final AtajoConfigurable atajo;
 
     // Los valores con los que nacen los campos son los predeterminados de la primera vez
-    private final CampoNumerico intervaloCampo = new CampoNumerico(100, 1, 600_000, 10, "ms");
+    private final CampoNumerico intervaloCampo =
+            new CampoNumerico(100, (int) ConfiguracionClics.INTERVALO_MINIMO_MS, 600_000, 10, "ms");
     private final CampoNumerico esperaCampo    = new CampoNumerico(3, 0, 60, 1, "s");
     private final CampoNumerico clicsCampo     = new CampoNumerico(0, 0, 10_000_000, 1, "clics");
     private final ControlSegmentado<BotonMouse> botonControl =
@@ -51,6 +52,11 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
         this.preferencias = preferencias;
         this.atajo = new AtajoConfigurable(CLAVE_ATAJO, AtajoService.F6, this::alternar, atajos, preferencias);
         atajo.setAlCambiar(this::mostrarAtajo);
+        tipoControl.alCambiar(doble -> {
+            if (Boolean.TRUE.equals(doble) && intervaloCampo.getValor() < ConfiguracionClics.INTERVALO_MINIMO_DOBLE_MS) {
+                intervaloCampo.setValor((int) ConfiguracionClics.INTERVALO_MINIMO_DOBLE_MS);
+            }
+        });
         mostrarConfiguracion(preferencias.cargarConfiguracionClics(leerConfiguracion()));
 
         Diseno.Pila opciones = pilaDeOpciones();

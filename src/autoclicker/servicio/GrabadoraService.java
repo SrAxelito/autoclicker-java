@@ -252,11 +252,4 @@ public class GrabadoraService implements EntradaListener {
             default -> 0;
         };
     }
-
-    /** Usa la tabla de JNativeHook para pasar de código nativo a código de Java. */
-    private static final class ConversorTeclas extends SwingKeyAdapter {
-        int codigoJava(NativeKeyEvent e) {
-            return getJavaKeyEvent(e).getKeyCode();
-        }
-    }
 }

@@ -17,11 +17,16 @@ class ConfiguracionClicsTest {
 
     @Test
     void aceptaLosValoresMinimos() {
-        assertDoesNotThrow(() -> new ConfiguracionClics(1, 0, 0, BotonMouse.CENTRAL, true));
+        assertDoesNotThrow(() -> new ConfiguracionClics(ConfiguracionClics.INTERVALO_MINIMO_MS, 0, 0, BotonMouse.IZQUIERDO, false));
+        assertDoesNotThrow(() -> new ConfiguracionClics(ConfiguracionClics.INTERVALO_MINIMO_DOBLE_MS, 0, 0, BotonMouse.CENTRAL, true));
     }
 
     @Test
-    void rechazaIntervalosMenoresAUnMilisegundo() {
+    void rechazaIntervalosMenoresAlMinimo() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ConfiguracionClics(9, 0, 0, BotonMouse.IZQUIERDO, false));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ConfiguracionClics(19, 0, 0, BotonMouse.IZQUIERDO, true));
         assertThrows(IllegalArgumentException.class,
                 () -> new ConfiguracionClics(0, 0, 0, BotonMouse.IZQUIERDO, false));
     }

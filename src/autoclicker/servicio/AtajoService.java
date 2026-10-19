@@ -65,6 +65,7 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
     private final Set<Integer> botonesDeAtajo = new HashSet<>();
 
     private Consumer<Atajo> capturaPendiente;
+    private boolean soloTeclas = false;
     private boolean tolerarModificadores = false;
     private boolean disponible = false;
     private FalloEscucha fallo = null;
@@ -177,7 +178,18 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
 
     /** La siguiente tecla o botón lateral se entrega al callback (null si se cancela con Esc). */
     public void capturar(Consumer<Atajo> alCapturar) {
-        capturaPendiente = alCapturar;
+        capturar(false, alCapturar);
+    }
+
+    /** Permite pedir que la captura acepte únicamente teclas (sin botones laterales del mouse). */
+    public void capturar(boolean soloTeclas, Consumer<Atajo> alCapturar) {
+        this.soloTeclas = soloTeclas;
+        this.capturaPendiente = alCapturar;
+    }
+
+    /** Atajo para capturar solo teclas. */
+    public void capturarSoloTeclas(Consumer<Atajo> alCapturar) {
+        capturar(true, alCapturar);
     }
 
     public void cancelarCaptura() {
@@ -191,6 +203,7 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
     private void terminarCaptura(Atajo resultado) {
         Consumer<Atajo> callback = capturaPendiente;
         capturaPendiente = null;
+        soloTeclas = false;
         if (callback != null) callback.accept(resultado);
     }
 
@@ -249,6 +262,7 @@ public class AtajoService implements NativeKeyListener, NativeMouseListener, Nat
         boolean lateral = boton == NativeMouseEvent.BUTTON4 || boton == NativeMouseEvent.BUTTON5;
 
         if (estaCapturando()) {
+            if (soloTeclas) return; // solo se aceptan teclas
             if (lateral) {
                 botonesDeAtajo.add(boton);
                 String nombre = boton == NativeMouseEvent.BUTTON4 ? "Botón lateral 1" : "Botón lateral 2";
