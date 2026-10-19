@@ -148,11 +148,24 @@ class PreferenciasRepositoryTest {
     }
 
     @Test
-    void unIntervaloInvalidoSeIgnoraEnLugarDeFallar() {
-        repositorio.guardarConfiguracionClics(new ConfiguracionClics(250, 40, 0, BotonMouse.DERECHO, true));
-        nodo.putLong("clics.intervaloMs", 0);
+    void unIntervaloMenorAlMinimoSeSubeAlMinimoConservandoLosDemasParametros() {
+        repositorio.guardarConfiguracionClics(new ConfiguracionClics(250, 40, 5, BotonMouse.DERECHO, false));
+        nodo.putLong("clics.intervaloMs", 1);
 
-        assertEquals(PREDETERMINADA, repositorio.cargarConfiguracionClics(PREDETERMINADA));
+        assertEquals(new ConfiguracionClics(10, 40, 5, BotonMouse.DERECHO, false),
+                repositorio.cargarConfiguracionClics(PREDETERMINADA));
+
+        nodo.putBoolean("clics.dobleClic", true);
+        assertEquals(new ConfiguracionClics(20, 40, 5, BotonMouse.DERECHO, true),
+                repositorio.cargarConfiguracionClics(PREDETERMINADA));
+
+        nodo.putBoolean("clics.dobleClic", false);
+        nodo.putLong("clics.intervaloMs", 0);
+        assertEquals(new ConfiguracionClics(10, 40, 5, BotonMouse.DERECHO, false),
+                repositorio.cargarConfiguracionClics(PREDETERMINADA));
+        nodo.putLong("clics.intervaloMs", -15);
+        assertEquals(new ConfiguracionClics(10, 40, 5, BotonMouse.DERECHO, false),
+                repositorio.cargarConfiguracionClics(PREDETERMINADA));
     }
 
     @Test

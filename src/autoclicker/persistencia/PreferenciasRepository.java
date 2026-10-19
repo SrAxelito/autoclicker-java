@@ -79,12 +79,16 @@ public class PreferenciasRepository {
      */
     public ConfiguracionClics cargarConfiguracionClics(ConfiguracionClics predeterminada) {
         try {
+            BotonMouse boton = BotonMouse.valueOf(prefs.get(CLICS_BOTON, predeterminada.boton().name()));
+            boolean dobleClic = prefs.getBoolean(CLICS_DOBLE, predeterminada.dobleClic());
+            long minimo = dobleClic ? ConfiguracionClics.INTERVALO_MINIMO_DOBLE_MS : ConfiguracionClics.INTERVALO_MINIMO_MS;
+            long intervalo = Math.max(minimo, prefs.getLong(CLICS_INTERVALO, predeterminada.intervaloMs()));
             return new ConfiguracionClics(
-                    prefs.getLong(CLICS_INTERVALO, predeterminada.intervaloMs()),
+                    intervalo,
                     prefs.getInt(CLICS_MAXIMO, predeterminada.maxClics()),
                     prefs.getInt(CLICS_ESPERA, predeterminada.esperaSegundos()),
-                    BotonMouse.valueOf(prefs.get(CLICS_BOTON, predeterminada.boton().name())),
-                    prefs.getBoolean(CLICS_DOBLE, predeterminada.dobleClic()));
+                    boton,
+                    dobleClic);
         } catch (IllegalArgumentException e) {
             return predeterminada; // datos guardados corruptos: se usan los predeterminados
         }
