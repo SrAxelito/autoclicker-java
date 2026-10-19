@@ -3,6 +3,7 @@ package autoclicker.modelo;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -52,5 +53,24 @@ class ConfiguracionTecleoTest {
     void rechazaTeclaDeTipoMouse() {
         assertThrows(IllegalArgumentException.class,
                 () -> new ConfiguracionTecleo(BOTON_MOUSE, 100, 0, 0));
+    }
+
+    @Test
+    void constructorSinMonitorUsaTodos() {
+        ConfiguracionTecleo config = new ConfiguracionTecleo(TECLA_ESPACIO, 100, 0, 3);
+        assertEquals(ConfiguracionClics.TODOS_LOS_MONITORES, config.monitor());
+    }
+
+    @Test
+    void aceptaMonitoresValidos() {
+        assertDoesNotThrow(() -> new ConfiguracionTecleo(TECLA_ESPACIO, 100, 0, 0, -1));
+        assertDoesNotThrow(() -> new ConfiguracionTecleo(TECLA_ESPACIO, 100, 0, 0, 0));
+        assertDoesNotThrow(() -> new ConfiguracionTecleo(TECLA_ESPACIO, 100, 0, 0, 1));
+    }
+
+    @Test
+    void rechazaMonitorMenorQueMenosUno() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ConfiguracionTecleo(TECLA_ESPACIO, 100, 0, 0, -2));
     }
 }

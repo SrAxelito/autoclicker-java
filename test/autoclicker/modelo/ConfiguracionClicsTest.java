@@ -3,6 +3,7 @@ package autoclicker.modelo;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,5 +44,24 @@ class ConfiguracionClicsTest {
     void exigeUnBoton() {
         assertThrows(NullPointerException.class,
                 () -> new ConfiguracionClics(100, 0, 0, null, false));
+    }
+
+    @Test
+    void constructorSinMonitorUsaTodos() {
+        ConfiguracionClics config = new ConfiguracionClics(100, 0, 3, BotonMouse.IZQUIERDO, false);
+        assertEquals(ConfiguracionClics.TODOS_LOS_MONITORES, config.monitor());
+    }
+
+    @Test
+    void aceptaMonitoresValidos() {
+        assertDoesNotThrow(() -> new ConfiguracionClics(100, 0, 0, BotonMouse.IZQUIERDO, false, -1));
+        assertDoesNotThrow(() -> new ConfiguracionClics(100, 0, 0, BotonMouse.IZQUIERDO, false, 0));
+        assertDoesNotThrow(() -> new ConfiguracionClics(100, 0, 0, BotonMouse.IZQUIERDO, false, 1));
+    }
+
+    @Test
+    void rechazaMonitorMenorQueMenosUno() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new ConfiguracionClics(100, 0, 0, BotonMouse.IZQUIERDO, false, -2));
     }
 }
