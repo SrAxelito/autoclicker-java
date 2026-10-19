@@ -272,4 +272,50 @@ class PreferenciasRepositoryTest {
         assertEquals(new ConfiguracionTecleo(espacio, 10, 10, 1),
                 repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO));
     }
+
+    // ---- Monitor activo ----
+
+    @Test
+    void elMonitorDeCadaConfiguracionSeGuardaYSeRecupera() {
+        ConfiguracionClics clics = new ConfiguracionClics(100, 0, 3, BotonMouse.IZQUIERDO, false, 1);
+        repositorio.guardarConfiguracionClics(clics);
+        assertEquals(1, repositorio.cargarConfiguracionClics(PREDETERMINADA).monitor());
+
+        Atajo espacio = new Atajo(Atajo.Tipo.TECLA, 57, 0, "Espacio");
+        ConfiguracionTecleo tecleo = new ConfiguracionTecleo(espacio, 100, 0, 3, 2);
+        repositorio.guardarConfiguracionTecleo(tecleo);
+        assertEquals(2, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO).monitor());
+    }
+
+    @Test
+    void sinDatoDeMonitorVuelveElPredeterminado() {
+        assertEquals(ConfiguracionClics.TODOS_LOS_MONITORES,
+                repositorio.cargarConfiguracionClics(PREDETERMINADA).monitor());
+        assertEquals(ConfiguracionClics.TODOS_LOS_MONITORES,
+                repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO).monitor());
+    }
+
+    @Test
+    void unValorMenorQueMenosUnoVuelveElPredeterminado() {
+        nodo.putInt("clics.monitor", -2);
+        assertEquals(ConfiguracionClics.TODOS_LOS_MONITORES,
+                repositorio.cargarConfiguracionClics(PREDETERMINADA).monitor());
+
+        nodo.putInt("tecleo.monitor", -5);
+        assertEquals(ConfiguracionClics.TODOS_LOS_MONITORES,
+                repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO).monitor());
+    }
+
+    @Test
+    void clicsMonitorYTecleoMonitorNoSeMezclan() {
+        ConfiguracionClics clics = new ConfiguracionClics(100, 0, 3, BotonMouse.IZQUIERDO, false, 0);
+        Atajo espacio = new Atajo(Atajo.Tipo.TECLA, 57, 0, "Espacio");
+        ConfiguracionTecleo tecleo = new ConfiguracionTecleo(espacio, 100, 0, 3, 1);
+
+        repositorio.guardarConfiguracionClics(clics);
+        repositorio.guardarConfiguracionTecleo(tecleo);
+
+        assertEquals(0, repositorio.cargarConfiguracionClics(PREDETERMINADA).monitor());
+        assertEquals(1, repositorio.cargarConfiguracionTecleo(PREDETERMINADA_TECLEO).monitor());
+    }
 }
