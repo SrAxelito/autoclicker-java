@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Compila AutoClicker en macOS o Linux.
-# Uso: ./construir.sh [version]      Ejemplo: ./construir.sh 1.6.1
+# Uso: ./construir.sh [version]      Ejemplo: ./construir.sh 1.8.0
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="${1:-1.6.1}"
+VERSION="${1:-1.8.0}"
 JNH="jnativehook-2.2.2.jar"
 NOMBRE="AutoClicker-$VERSION"
 ARQUITECTURA="$(uname -m)"
