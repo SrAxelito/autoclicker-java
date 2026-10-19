@@ -40,6 +40,7 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
             new ControlSegmentado<>(BotonMouse.values());
     private final ControlSegmentado<Boolean> tipoControl =
             new ControlSegmentado<>(new Boolean[]{false, true}, new String[]{"Simple", "Doble"});
+    private final SelectorMonitor selectorMonitor = new SelectorMonitor();
 
     private final BotonModerno iniciarBtn = new BotonModerno("Iniciar", BotonModerno.Variante.PRIMARIO);
     private final BotonModerno detenerBtn = new BotonModerno("Detener", BotonModerno.Variante.PELIGRO);
@@ -67,6 +68,10 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
         opciones.agregar(Diseno.dosColumnas(
                 Diseno.tarjeta("Tipo de clic", tipoControl, null),
                 Diseno.tarjeta("Repeticiones", clicsCampo, "0 = repetir hasta detener")), 12);
+        if (selectorMonitor.hayMultiplesMonitores()) {
+            opciones.agregar(Diseno.tarjeta("Monitor activo", selectorMonitor,
+                    "En los demás monitores los clics se pausan"), 12);
+        }
         opciones.agregar(Diseno.tarjeta("Atajo para iniciar / detener", atajo.selector(), notaAtajo()), 12);
 
         Diseno.Pila pie = pilaDelPie();
@@ -106,7 +111,8 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
                 clicsCampo.getValor(),
                 esperaCampo.getValor(),
                 botonControl.getSeleccion(),
-                tipoControl.getSeleccion());
+                tipoControl.getSeleccion(),
+                selectorMonitor.getMonitor());
     }
 
     /** Pone una configuración en los campos; cada campo ajusta el valor a sus propios límites. */
@@ -116,6 +122,7 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
         esperaCampo.setValor(config.esperaSegundos());
         botonControl.setSeleccion(config.boton());
         tipoControl.setSeleccion(config.dobleClic());
+        selectorMonitor.setMonitor(config.monitor());
     }
 
     // ---- Acciones ----
@@ -166,6 +173,7 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
 
     /** Se ejecuta en el hilo de Swing: lee el contador del servicio en lugar de recibir un aviso por clic. */
     private void mostrarProgreso() {
+        if (servicio.estaPausado()) return;
         int hechos = servicio.clicsHechos();
         if (hechos > 0 && servicio.estaCorriendo()) {
             estado.setEstado("Clicando... " + hechos + " clics", IndicadorEstado.Tono.ACTIVO);
@@ -201,6 +209,7 @@ class PanelAutoclicker extends PanelModo implements EstadoListener {
         clicsCampo.setEnabled(libre);
         botonControl.setEnabled(libre);
         tipoControl.setEnabled(libre);
+        selectorMonitor.setEnabled(libre);
         atajo.setEnabled(libre);
         avisarCambioDeOcupado();
     }

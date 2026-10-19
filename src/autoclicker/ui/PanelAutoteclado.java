@@ -43,6 +43,7 @@ class PanelAutoteclado extends PanelModo implements EstadoListener {
             new CampoNumerico(100, (int) ConfiguracionTecleo.INTERVALO_MINIMO_MS, 600_000, 10, "ms");
     private final CampoNumerico esperaCampo       = new CampoNumerico(3, 0, 60, 1, "s");
     private final CampoNumerico repeticionesCampo = new CampoNumerico(0, 0, 10_000_000, 1, "veces");
+    private final SelectorMonitor selectorMonitor = new SelectorMonitor();
 
     private final BotonModerno iniciarBtn = new BotonModerno("Iniciar", BotonModerno.Variante.PRIMARIO);
     private final BotonModerno detenerBtn = new BotonModerno("Detener", BotonModerno.Variante.PELIGRO);
@@ -68,6 +69,10 @@ class PanelAutoteclado extends PanelModo implements EstadoListener {
                 Diseno.tarjeta("Intervalo entre pulsaciones", intervaloCampo, null),
                 Diseno.tarjeta("Espera inicial", esperaCampo, null)), 12);
         opciones.agregar(Diseno.tarjeta("Repeticiones", repeticionesCampo, "0 = repetir hasta detener"), 12);
+        if (selectorMonitor.hayMultiplesMonitores()) {
+            opciones.agregar(Diseno.tarjeta("Monitor activo", selectorMonitor,
+                    "Se pausa mientras el cursor está en otro monitor. Las teclas van a la ventana activa"), 12);
+        }
         opciones.agregar(Diseno.tarjeta("Atajo para iniciar / detener", atajo.selector(), notaAtajo()), 12);
 
         Diseno.Pila pie = pilaDelPie();
@@ -106,7 +111,8 @@ class PanelAutoteclado extends PanelModo implements EstadoListener {
                 teclaActual,
                 intervaloCampo.getValor(),
                 repeticionesCampo.getValor(),
-                esperaCampo.getValor());
+                esperaCampo.getValor(),
+                selectorMonitor.getMonitor());
     }
 
     /** Pone una configuración en los campos; cada campo ajusta el valor a sus propios límites. */
@@ -116,6 +122,7 @@ class PanelAutoteclado extends PanelModo implements EstadoListener {
         intervaloCampo.setValor((int) Math.min(config.intervaloMs(), Integer.MAX_VALUE));
         repeticionesCampo.setValor(config.repeticiones());
         esperaCampo.setValor(config.esperaSegundos());
+        selectorMonitor.setMonitor(config.monitor());
     }
 
     // ---- Acciones ----
@@ -189,6 +196,7 @@ class PanelAutoteclado extends PanelModo implements EstadoListener {
     }
 
     private void mostrarProgreso() {
+        if (servicio.estaPausado()) return;
         int hechos = servicio.pulsacionesHechas();
         if (hechos > 0 && servicio.estaCorriendo()) {
             estado.setEstado("Pulsando... " + hechos + (hechos == 1 ? " pulsación" : " pulsaciones"),
@@ -222,6 +230,7 @@ class PanelAutoteclado extends PanelModo implements EstadoListener {
         intervaloCampo.setEnabled(libre);
         esperaCampo.setEnabled(libre);
         repeticionesCampo.setEnabled(libre);
+        selectorMonitor.setEnabled(libre);
         atajo.setEnabled(libre);
         avisarCambioDeOcupado();
     }
