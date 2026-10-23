@@ -9,8 +9,7 @@
 [![GUI](https://img.shields.io/badge/GUI-Swing%20%2F%20AWT-5382a1?style=flat-square&logo=java&logoColor=white)](https://docs.oracle.com/en/java/javase/21/docs/api/java.desktop/javax/swing/package-summary.html)
 [![JNativeHook](https://img.shields.io/badge/JNativeHook-2.2.2-2ea44f?style=flat-square)](https://github.com/kwhat/jnativehook)
 [![Plataformas](https://img.shields.io/badge/plataformas-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](https://github.com/SrAxelito/autoclicker-java/releases/latest)
-[![Cobertura](https://img.shields.io/badge/cobertura-%3E90%25-brightgreen?style=flat-square)](https://github.com/SrAxelito/autoclicker-java/actions)
-[![Pruebas](https://img.shields.io/badge/pruebas-80%20pasadas-success?style=flat-square&logo=junit5&logoColor=white)](https://github.com/SrAxelito/autoclicker-java/actions)
+[![Pruebas](https://img.shields.io/badge/pruebas-117%20pasadas-success?style=flat-square&logo=junit5&logoColor=white)](https://github.com/SrAxelito/autoclicker-java/actions)
 [![Build](https://img.shields.io/github/actions/workflow/status/SrAxelito/autoclicker-java/compilar.yml?branch=main&style=flat-square&label=build)](https://github.com/SrAxelito/autoclicker-java/actions/workflows/compilar.yml)
 [![Licencia](https://img.shields.io/badge/licencia-MIT-green?style=flat-square)](LICENSE)
 
@@ -247,7 +246,7 @@ src/autoclicker/
 ---
 
 <details>
-<summary>🧪 <b>Suite de Pruebas Automatizadas y Cobertura</b></summary>
+<summary>🧪 <b>Suite de Pruebas Automatizadas</b></summary>
 <br>
 
 El proyecto cuenta con una exhaustiva suite de pruebas unitarias y de integración construida sobre **JUnit 5**, que valida el comportamiento matemático de tiempos, la integridad de serialización y la robustez ante entradas anómalas.
